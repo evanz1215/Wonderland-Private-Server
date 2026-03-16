@@ -1,139 +1,303 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Wonderland_Private_Server.Network;
+using Network;
 
-
-namespace Wonderland_Private_Server.Code.Objects
+namespace Game
 {
+    /// <summary>
+    /// Manages player-to-player trading.
+    ///
+    /// Trade flow:
+    /// 1. Player A requests trade with Player B → AC 25,1
+    /// 2. Player B accepts/declines → AC 25,2
+    /// 3. Both get trade windows open → AC 25,1 (server→client, opens window)
+    /// 4. Each player confirms their offer (gold + items) → AC 25,3
+    /// 5. Partner sees the confirmed offer → AC 25,3 (server→client)
+    /// 6. Both finalize → AC 25,4 → items/gold swapped
+    /// 7. Trade ends → AC 25,2 code 4
+    /// </summary>
     public class TradeManager
     {
-        public bool FinializedTrade;
-        Player Owner;
-        Player Trading_with { get; set; }
-        List<byte> Items_Trading;
-        List<cItem> partner_Items;
+        Player m_owner;
+        Player m_partner;
 
-        uint GoldTradingTo_Them;
-        uint GoldTradingTo_Me;
+        uint m_offeredGold;
+        List<byte> m_offeredSlots;       // inventory slots owner is offering
+        bool m_confirmed;                // owner has locked in their offer
+        bool m_finalized;                // owner agreed to complete
+
+        public Player Partner { get { return m_partner; } }
+        public bool IsTrading { get { return m_partner != null; } }
 
         public TradeManager(Player owner)
         {
-            Owner = owner;
+            m_owner = owner;
+            m_offeredSlots = new List<byte>();
         }
 
-        public void TradeWith(Player player)
+        /// <summary>
+        /// Send a trade request to the target player.
+        /// Server sends AC 25,1 to target with requester's CharID.
+        /// </summary>
+        public void RequestTrade(Player target)
         {
-            //Owner.CharacterTemplateState = CharacterTemplate.PlayerState.Trading;
-            //Trading_with = player;
-            //SendPacket opentrade = new SendPacket();
-            //opentrade.Header(25, 1);
-            //opentrade.AddDWord(player.CharacterTemplateID);
-            //g.SendPacket(g.FindPlayerby_CharacterTemplateID(Owner.CharacterTemplateID), opentrade);
+            if (IsTrading)
+            {
+                // Already in a trade
+                return;
+            }
+            if (target.Trade.IsTrading)
+            {
+                // Target is already trading with someone
+                return;
+            }
+            if (!m_owner.Settings.TRADABLE || !target.Settings.TRADABLE)
+            {
+                // One of the players has trading disabled
+                return;
+            }
+
+            // Send trade request to target
+            SendPacket pkt = new SendPacket();
+            pkt.Pack8(25);
+            pkt.Pack8(1);
+            pkt.Pack32(m_owner.CharID);
+            target.Send(pkt);
         }
 
+        /// <summary>
+        /// Accept a trade request from requester.
+        /// Opens trade windows on both sides (AC 25,1 with partner CharID).
+        /// </summary>
+        public void AcceptTrade(Player requester)
+        {
+            if (IsTrading || requester.Trade.IsTrading)
+                return;
+
+            // Link both players
+            m_partner = requester;
+            requester.Trade.m_partner = m_owner;
+
+            // Reset trade state
+            ResetOfferState();
+            requester.Trade.ResetOfferState();
+
+            // Send open trade window to both
+            // Owner gets requester's CharID
+            SendPacket toOwner = new SendPacket();
+            toOwner.Pack8(25);
+            toOwner.Pack8(1);
+            toOwner.Pack32(requester.CharID);
+            m_owner.Send(toOwner);
+
+            // Requester gets owner's CharID
+            SendPacket toRequester = new SendPacket();
+            toRequester.Pack8(25);
+            toRequester.Pack8(1);
+            toRequester.Pack32(m_owner.CharID);
+            requester.Send(toRequester);
+        }
+
+        /// <summary>
+        /// Cancel the current trade. Notifies both players with AC 25,2 code 3.
+        /// </summary>
         public void CancelTrade()
         {
-            //if (Owner.CharacterTemplateState == CharacterTemplate.PlayerState.Trading)
-            //{
-            //    Owner.CharacterTemplateState = CharacterTemplate.PlayerState.inMap;
-            //    SendPacket closetrade = new SendPacket();
-            //    closetrade.Header(25, 2);
-            //    closetrade.Pack(3);
-            //    g.SendPacket(g.FindPlayerby_CharacterTemplateID(Owner.CharacterTemplateID), closetrade);
-            //    Trading_with.character.cTrader.CancelTrade();
-            //    Trading_with = null;
-            //}
+            if (!IsTrading) return;
+
+            Player partner = m_partner;
+
+            // Clear both sides
+            ClearTradeState();
+            if (partner != null && partner.Trade != null)
+                partner.Trade.ClearTradeState();
+
+            // Notify both players
+            SendPacket cancel = new SendPacket();
+            cancel.Pack8(25);
+            cancel.Pack8(2);
+            cancel.Pack8(3);
+
+            m_owner.Send(cancel);
+            if (partner != null)
+                partner.Send(cancel);
         }
 
-        public void onConfirmTrade(RecvPacket d)
+        /// <summary>
+        /// Owner confirms their offer: gold amount and inventory slots.
+        /// Sends AC 25,3 to partner with item details.
+        /// </summary>
+        public void ConfirmOffer(uint gold, List<byte> itemSlots)
         {
-            //int ptr = 2;
-            //My_GoldTrading = d.GetDWord(ptr); ptr += 4;
-            //My_Items_Trading = new List<byte>();
-            //while (ptr < d.Size)
-            //{
-            //    My_Items_Trading.Add(d.GetByte(ptr));
-            //    ptr++;
-            //}
+            if (!IsTrading) return;
 
-            //List<cInvItem> tmp = new List<cInvItem>();
-            //foreach (byte a in My_Items_Trading)
-            //    tmp.Add(Owner.MyInventory.GetInventoryItem(a));
+            // Validate gold
+            if (gold > 0 && m_owner.Gold < gold)
+                return;
 
-            //Trading_with.character.cTrader.Partner_confirmedTrade(My_GoldTrading, tmp);
+            // Validate item slots
+            foreach (byte slot in itemSlots)
+            {
+                var item = m_owner.Inv[slot];
+                if (item == null || item.ItemID == 0)
+                    return;
+            }
+
+            m_offeredGold = gold;
+            m_offeredSlots = new List<byte>(itemSlots);
+            m_confirmed = true;
+
+            // Reset finalized state if re-confirming
+            m_finalized = false;
+            m_partner.Trade.m_finalized = false;
+
+            // Send the offer details to partner: AC 25,3
+            SendPacket pkt = new SendPacket();
+            pkt.Pack8(25);
+            pkt.Pack8(3);
+            pkt.Pack32(gold);
+
+            foreach (byte slot in itemSlots)
+            {
+                var item = m_owner.Inv[slot];
+                if (item != null)
+                {
+                    pkt.Pack16(item.ItemID);
+                    pkt.Pack8(item.Ammt);
+                    pkt.Pack8(item.Damage);
+                    // 24 bytes padding for item attributes
+                    for (int i = 0; i < 24; i++)
+                        pkt.Pack8(0);
+                }
+            }
+
+            m_partner.Send(pkt);
         }
 
-        public void onPartner_ConfirmedTrade(uint Gold, List<cItem> Items)
+        /// <summary>
+        /// Owner finalizes the trade. If both have finalized, execute the swap.
+        /// </summary>
+        public void FinalizeTrade()
         {
-            //partner_Items = Items;
-            //partner_GoldTrading = Gold;
-            //SendPacket Tradecfm = new SendPacket();
-            //Tradecfm.Header(25, 3);
-            //Tradecfm.AddDWord(Gold);
+            if (!IsTrading || !m_confirmed) return;
 
-            //foreach (cInvItem h in Items)
-            //{
-            //    Tradecfm.AddWord(h.ID);
-            //    Tradecfm.Pack(h.ammt);
-            //    Tradecfm.Pack(h.damage);
-            //    for (int a = 0; a < 24; a++)
-            //        Tradecfm.Pack(0);
-            //}
-            //Tradecfm.SetSize();
-            //g.SendPacket(g.FindPlayerby_CharacterTemplateID(Owner.CharacterTemplateID), Tradecfm);
+            m_finalized = true;
+
+            if (m_finalized && m_partner.Trade.m_finalized)
+            {
+                ExecuteTrade();
+            }
         }
 
-        public void TradeComplete()
+        /// <summary>
+        /// Execute the actual item/gold swap between both players.
+        /// </summary>
+        void ExecuteTrade()
         {
+            Player partnerPlayer = m_partner;
+            TradeManager partnerTrade = m_partner.Trade;
 
-            //Trading_with = null;
-            //foreach (byte r in My_Items_Trading)
-            //{
-            //    Owner.MyInventory.RemoveItem(r);
-            //}
-            //foreach (cInvItem r in partner_Items)
-            //{
-            //    Owner.MyInventory.RecieveItem(r, true, r.ammt);
-            //}
-            //if (My_GoldTrading > 0)
-            //{
-            //    SendPacket closetrade = new SendPacket();
-            //    closetrade.Header(26, 2);
-            //    closetrade.AddDWord(My_GoldTrading);
-            //    closetrade.SetSize();
-            //    g.SendPacket(g.FindPlayerby_CharacterTemplateID(Owner.CharacterTemplateID), closetrade);
-            //}
-            //if (partner_GoldTrading > 0)
-            //{
-            //    SendPacket closetrade = new SendPacket();
-            //    closetrade.Header(26, 1);
-            //    closetrade.AddDWord(partner_GoldTrading);
-            //    closetrade.SetSize();
-            //    g.SendPacket(g.FindPlayerby_CharacterTemplateID(Owner.CharacterTemplateID), closetrade);
-            //}
+            // --- Remove items from both players first ---
 
-            //SendPacket endtrade = new SendPacket();
-            //endtrade.Header(25, 2);
-            //endtrade.Pack(4);
-            //endtrade.SetSize();
-            //g.SendPacket(g.FindPlayerby_CharacterTemplateID(Owner.CharacterTemplateID), endtrade);
+            // Collect item IDs and amounts before removing
+            List<KeyValuePair<ushort, byte>> ownerItems = new List<KeyValuePair<ushort, byte>>();
+            foreach (byte slot in m_offeredSlots)
+            {
+                var invItem = m_owner.Inv[slot];
+                if (invItem != null && invItem.ItemID != 0)
+                {
+                    ownerItems.Add(new KeyValuePair<ushort, byte>(invItem.ItemID, invItem.Ammt));
+                }
+            }
+
+            List<KeyValuePair<ushort, byte>> partnerItems = new List<KeyValuePair<ushort, byte>>();
+            foreach (byte slot in partnerTrade.m_offeredSlots)
+            {
+                var invItem = partnerPlayer.Inv[slot];
+                if (invItem != null && invItem.ItemID != 0)
+                {
+                    partnerItems.Add(new KeyValuePair<ushort, byte>(invItem.ItemID, invItem.Ammt));
+                }
+            }
+
+            // Remove items from owner
+            foreach (byte slot in m_offeredSlots)
+            {
+                var invItem = m_owner.Inv[slot];
+                if (invItem != null && invItem.ItemID != 0)
+                    m_owner.Inv.RemoveItem(slot, invItem.Ammt);
+            }
+
+            // Remove items from partner
+            foreach (byte slot in partnerTrade.m_offeredSlots)
+            {
+                var invItem = partnerPlayer.Inv[slot];
+                if (invItem != null && invItem.ItemID != 0)
+                    partnerPlayer.Inv.RemoveItem(slot, invItem.Ammt);
+            }
+
+            // --- Add items to receiving players ---
+
+            // Partner receives owner's items
+            foreach (var item in ownerItems)
+            {
+                partnerPlayer.Inv.AddItem(item.Key, item.Value);
+            }
+
+            // Owner receives partner's items
+            foreach (var item in partnerItems)
+            {
+                m_owner.Inv.AddItem(item.Key, item.Value);
+            }
+
+            // --- Handle gold ---
+
+            if (m_offeredGold > 0)
+            {
+                m_owner.Eqs.TakeGold((int)m_offeredGold);
+                partnerPlayer.Eqs.AddGold((int)m_offeredGold);
+            }
+
+            if (partnerTrade.m_offeredGold > 0)
+            {
+                partnerPlayer.Eqs.TakeGold((int)partnerTrade.m_offeredGold);
+                m_owner.Eqs.AddGold((int)partnerTrade.m_offeredGold);
+            }
+
+            // Send gold updates
+            m_owner.Eqs.SendGold();
+            partnerPlayer.Eqs.SendGold();
+
+            // --- Send trade complete to both (AC 25,2 code 4) ---
+
+            SendPacket complete = new SendPacket();
+            complete.Pack8(25);
+            complete.Pack8(2);
+            complete.Pack8(4);
+
+            m_owner.Send(complete);
+            partnerPlayer.Send(complete);
+
+            // Clear trade state
+            ClearTradeState();
+            partnerTrade.ClearTradeState();
         }
 
-        public void TradeFinalized()
+        void ResetOfferState()
         {
+            m_offeredGold = 0;
+            m_offeredSlots.Clear();
+            m_confirmed = false;
+            m_finalized = false;
+        }
 
-            //FinializedTrade = true;
-
-            //if (FinializedTrade && Trading_with.character.cTrader.FinializedTrade)
-            //{
-            //    Owner.CharacterTemplateState = CharacterTemplate.PlayerState.inMap;
-            //    Trading_with.character.CharacterTemplateState = CharacterTemplate.PlayerState.inMap;
-            //    TradeComplete();
-            //    Trading_with.character.cTrader.TradeComplete();
-            //}
+        void ClearTradeState()
+        {
+            m_partner = null;
+            ResetOfferState();
         }
     }
 }

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Network;
 using Network.ActionCodes;
 using Game;
+using Game.Maps;
 
 namespace Wonderland_Private_Server.ActionCodes
 {
@@ -29,13 +30,31 @@ namespace Wonderland_Private_Server.ActionCodes
         }
         void Recv1(Player p, RecievePacket r)
         {
+            ushort clickID = r.Unpack16();
+
+            var map = p.CurMap as GameMap;
+            if (map != null)
+            {
+                // Check if clicked NPC is a shop
+                var shop = map.FindShop(clickID);
+                if (shop != null)
+                {
+                    p.InteractingShop = shop;
+                    shop.SendShopList(p);
+                    p.Send(Tools.FromFormat("bb", 20, 8));
+                    return;
+                }
+
+                // Check if clicked NPC is a quest NPC
+                var questNpc = map.FindQuestNpc(clickID);
+                if (questNpc != null)
+                {
+                    questNpc.Interact(p);
+                    return;
+                }
+            }
+
             p.Send(Tools.FromFormat("bb", 20, 8));
-            //if (!p.CurrentMap.ProccessInteraction(r.Unpack8(), ref p))
-            //{
-            //    SendPacket tmp = new SendPacket();
-            //    tmp.Pack(new byte[] { 20, 8 });
-            //    p.Send(tmp);
-            //}
         }
         void Recv6(Player p, RecievePacket r)
         {
@@ -67,7 +86,26 @@ namespace Wonderland_Private_Server.ActionCodes
         }
         void Recv9(Player p, RecievePacket r)
         {
+            // Dialog answer from player (e.g., quest accept/decline)
+            byte answer = r.Unpack8();
 
+            // Re-interact with the last quest NPC if present
+            var map = p.CurMap as GameMap;
+            if (map != null)
+            {
+                // Try to find the quest NPC the player was interacting with
+                // For now, iterate quest NPCs — could be optimized with a per-player tracking field
+                foreach (var npc in map.QuestNpcsList)
+                {
+                    if (npc.QuestData != null)
+                    {
+                        npc.Interact(p, answer);
+                        return;
+                    }
+                }
+            }
+
+            p.Send(Tools.FromFormat("bb", 20, 8));
         }
     }
 }

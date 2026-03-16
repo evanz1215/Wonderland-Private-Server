@@ -132,7 +132,7 @@ namespace Wonderland_Private_Server
             //cGlobal.gEveManager = new DataManagement.DataFiles.EveManager();
             //cGlobal.gGameDataBase = new DataManagement.DataBase.GameDataBase();
             //cGlobal.gItemManager = new DataManagement.DataFiles.ItemManager();
-            //cGlobal.gSkillManager = new DataManagement.DataFiles.SkillDataFile();
+            cGlobal.gSkillManager = new Wonderland_Private_Server.DataManagement.DataFiles.SkillDataFile();
             //cGlobal.gCompoundDat = new DataManagement.DataFiles.cCompound2Dat();
             //cGlobal.gUserDataBase = new UserDataBase();
             //cGlobal.gNpcManager = new DataManagement.DataFiles.NpcDat();
@@ -159,15 +159,35 @@ namespace Wonderland_Private_Server
 
 
 
-            cGlobal.gUserDataBase.TableName = cGlobal.SrvSettings.DB.TableName_Ref;
-            cGlobal.gUserDataBase.Username_Ref = cGlobal.SrvSettings.DB.Username_Ref;
-            cGlobal.gUserDataBase.Password_Ref = cGlobal.SrvSettings.DB.Password_Ref;
+            if (!string.IsNullOrEmpty(cGlobal.SrvSettings.DB.TableName_Ref))
+                cGlobal.gUserDataBase.TableName = cGlobal.SrvSettings.DB.TableName_Ref;
+            if (!string.IsNullOrEmpty(cGlobal.SrvSettings.DB.Username_Ref))
+                cGlobal.gUserDataBase.Username_Ref = cGlobal.SrvSettings.DB.Username_Ref;
+            if (!string.IsNullOrEmpty(cGlobal.SrvSettings.DB.Password_Ref))
+                cGlobal.gUserDataBase.Password_Ref = cGlobal.SrvSettings.DB.Password_Ref;
             cGlobal.gUserDataBase.DataBaseID_Ref = cGlobal.SrvSettings.DB.UserID_Ref;
             cGlobal.gUserDataBase.IM_Ref = cGlobal.SrvSettings.DB.IM_Ref;
             cGlobal.gUserDataBase.CharacterID1_Ref = cGlobal.SrvSettings.DB.CharacterID1_Ref;
             cGlobal.gUserDataBase.CharacterID2_Ref = cGlobal.SrvSettings.DB.CharacterID2_Ref;
             cGlobal.gUserDataBase.Char_Delete_Code_Ref = cGlobal.SrvSettings.DB.Char_Delete_Code_Ref;
             cGlobal.gUserDataBase.PassVerification = (Game.VerifyPassType)cGlobal.SrvSettings.DB.PassVerification;
+
+            // Configure DB connection parameters from settings via reflection
+            if (!string.IsNullOrEmpty(cGlobal.SrvSettings.DB.ServerIP))
+            {
+                var dbType = typeof(RCLibrary.Core.DataBase);
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public;
+                foreach (RCLibrary.Core.DataBase db in new RCLibrary.Core.DataBase[] { cGlobal.gUserDataBase, cGlobal.gCharacterDataBase, cGlobal.gGameDataBase })
+                {
+                    dbType.GetField("ServerIP", flags).SetValue(db, cGlobal.SrvSettings.DB.ServerIP);
+                    dbType.GetField("Port", flags).SetValue(db, cGlobal.SrvSettings.DB.Port.ToString());
+                    dbType.GetField("DB", flags).SetValue(db, cGlobal.SrvSettings.DB.DataBase);
+                    dbType.GetField("User", flags).SetValue(db, cGlobal.SrvSettings.DB.User);
+                    dbType.GetField("Pass", flags).SetValue(db, cGlobal.SrvSettings.DB.Pass);
+                    dbType.GetField("ServType", flags).SetValue(db, cGlobal.SrvSettings.DB.Server_Type);
+                }
+                DebugSystem.Write(string.Format("[DB] Configured: {0}:{1} db={2} user={3}", cGlobal.SrvSettings.DB.ServerIP, cGlobal.SrvSettings.DB.Port, cGlobal.SrvSettings.DB.DataBase, cGlobal.SrvSettings.DB.User));
+            }
             //if (GitUptOption.SelectedIndex != (byte)cGlobal.SrvSettings.Update.UpdtControl)
             //    GitUptOption.SelectedIndex = (byte)cGlobal.SrvSettings.Update.UpdtControl;
 
@@ -247,7 +267,7 @@ namespace Wonderland_Private_Server
 
             #region Load Data Files
             //cGlobal.gItemManager.LoadItems("Data\\Item.dat");
-            //cGlobal.gSkillManager.LoadSkills("Data\\Skill.dat");
+            cGlobal.gSkillManager.LoadSkills("Data\\Skill.dat");
             //cGlobal.gNpcManager.LoadNpc("Data\\Npc.dat");
             //cGlobal.gEveManager.LoadFile("Data\\eve.Emg");
             //cGlobal.gCompoundDat.Load("Data\\Compound.dat");
@@ -257,8 +277,16 @@ namespace Wonderland_Private_Server
 
             DebugSystem.Write("[Init] - Intializing Server Please Wait.....");
             #region Initialize Server Components
-            cGlobal.gWorld.Initialize();            
+            cGlobal.gWorld.Initialize();
             cGlobal.gLoginServer.Initialize();
+
+            // Load quest templates
+            int questCount = cGlobal.gQuestTemplates.LoadFromFile("Data\\quests.txt");
+            if (questCount > 0)
+                DebugSystem.Write("[Init] - Loaded " + questCount + " quest templates");
+
+            // Initialize game logger
+            Server.System.GameLogger.Initialize("logs");
 
             //cGlobal.WLO_World.Initialize();
             Thread.Sleep(2);

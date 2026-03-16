@@ -1,39 +1,37 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Wonderland_Private_Server.Code.Objects;
-using Wonderland_Private_Server.Code.Enums;
+using Game;
 
-namespace Wonderland_Private_Server.Code.Interface
+namespace Game.Code
 {
     public class GuildMember
     {
-        public Character OfflineSrc { private get; set; }
-        public Character OnlineSrc { private get; set; }
-
+        public Character OfflineSrc { get; set; }
+        public Character OnlineSrc { get; set; }
 
         #region Guild Member Properties
         public virtual uint ID
         {
             get
             {
-                return (OnlineSrc == null) ? (OfflineSrc == null) ? 0 : OfflineSrc.ID : OnlineSrc.ID;
+                return (OnlineSrc == null) ? (OfflineSrc == null) ? 0 : OfflineSrc.CharID : OnlineSrc.CharID;
             }
         }
         public virtual string CharacterName
         {
             get
             {
-                return (OnlineSrc == null) ? (OfflineSrc == null) ? "" : OfflineSrc.CharacterName : OnlineSrc.CharacterName;
+                return (OnlineSrc == null) ? (OfflineSrc == null) ? "" : OfflineSrc.CharName : OnlineSrc.CharName;
             }
         }
         public virtual string Nickname
         {
             get
             {
-                return (OnlineSrc == null) ? (OfflineSrc == null) ? "" : OfflineSrc.Nickname : OnlineSrc.Nickname;
+                return (OnlineSrc == null) ? (OfflineSrc == null) ? "" : OfflineSrc.NickName : OnlineSrc.NickName;
             }
         }
         public virtual UInt16 HairColor
@@ -64,16 +62,6 @@ namespace Wonderland_Private_Server.Code.Interface
                 return (OnlineSrc == null) ? (OfflineSrc == null) ? (ushort)0 : OfflineSrc.EyeColor : OnlineSrc.EyeColor;
             }
         }
-        public virtual byte Busy
-        {
-            get
-            {
-                return (OnlineSrc == null) ? (OfflineSrc == null) ? (byte)0 : OfflineSrc.Busy : OnlineSrc.Busy;
-            }
-        }
-        /// <summary>
-        /// a Character's level
-        /// </summary>
         public byte Level
         {
             get
@@ -81,9 +69,6 @@ namespace Wonderland_Private_Server.Code.Interface
                 return (OnlineSrc == null) ? (OfflineSrc == null) ? (byte)0 : OfflineSrc.Level : OnlineSrc.Level;
             }
         }
-        /// <summary>
-        /// Returns whether a player is reborn or not
-        /// </summary>
         public bool Reborn
         {
             get
@@ -91,9 +76,6 @@ namespace Wonderland_Private_Server.Code.Interface
                 return (OnlineSrc == null) ? (OfflineSrc == null) ? false : OfflineSrc.Reborn : OnlineSrc.Reborn;
             }
         }
-        /// <summary>
-        /// SubType of Character body Chosen
-        /// </summary>
         public byte Head
         {
             get
@@ -101,9 +83,6 @@ namespace Wonderland_Private_Server.Code.Interface
                 return (OnlineSrc == null) ? (OfflineSrc == null) ? (byte)0 : OfflineSrc.Head : OnlineSrc.Head;
             }
         }
-        /// <summary>
-        /// BodyType
-        /// </summary>
         public BodyStyle Body
         {
             get
@@ -111,19 +90,13 @@ namespace Wonderland_Private_Server.Code.Interface
                 return (OnlineSrc == null) ? (OfflineSrc == null) ? BodyStyle.none : OfflineSrc.Body : OnlineSrc.Body;
             }
         }
-        /// <summary>
-        /// Element Type
-        /// </summary>
-        public ElementType Element
+        public Affinity Element
         {
             get
             {
-                return (OnlineSrc == null) ? (OfflineSrc == null) ? ElementType.Undefined : OfflineSrc.Element : OnlineSrc.Element;
+                return (OnlineSrc == null) ? (OfflineSrc == null) ? Affinity.Normal : OfflineSrc.Element : OnlineSrc.Element;
             }
         }
-        /// <summary>
-        /// Rebirth Job Type
-        /// </summary>
         public RebornJob Job
         {
             get

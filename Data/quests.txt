@@ -1,0 +1,18 @@
+# Quest Template Data File
+# Format: QuestID|Name|Description|MinLevel|PrereqQuestID|TargetNpcID|TargetItemID|TargetCount|RewardExp|RewardGold|RewardItemID|RewardItemAmount
+#
+# TargetNpcID > 0 and TargetItemID == 0 → Kill quest (kill TargetCount of NpcID)
+# TargetItemID > 0 → Collect quest (collect TargetCount of ItemID)
+# PrereqQuestID = 0 → No prerequisite
+#
+# === Beginner Quests ===
+1001|Slime Hunt|Defeat 5 slimes to prove your worth.|1|0|10001|0|5|100|50|0|0
+1002|Mushroom Gathering|Collect 3 mushrooms from the forest.|1|0|0|30001|3|150|80|0|0
+1003|Wolf Trouble|The wolves are getting aggressive. Defeat 3 of them.|5|1001|10005|0|3|300|150|0|0
+# === Intermediate Quests ===
+2001|Bandit Cleanup|Clear out 5 bandits from the road.|10|0|10020|0|5|800|300|0|0
+2002|Herb Collection|Gather 5 healing herbs for the apothecary.|10|0|0|30010|5|600|200|30010|2
+2003|Cave Explorer|Defeat 3 cave bats to map the cavern.|15|2001|10030|0|3|1200|500|0|0
+# === Advanced Quests ===
+3001|Dragon Scale|Collect a dragon scale from the mountain.|30|0|0|30050|1|5000|2000|31001|1
+3002|Boss Challenge|Defeat the Goblin King.|25|2003|10100|0|1|3000|1000|0|0

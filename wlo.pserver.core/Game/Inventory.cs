@@ -398,7 +398,7 @@ namespace Game.Code
                     Dictionary<byte, uint[]> tmp = new Dictionary<byte, uint[]>();
 
                     for(byte a =1;a<51;a++)
-                        tmp.Add(a, new uint[] { this[a].ItemID, this[a].Damage, this[a].Ammt, a, 0, 0, 0, 0 });
+                        tmp.Add(a, new uint[] { this[a].ItemID, this[a].Damage, this[a].Ammt, a, this[a].SocketID, this[a].BombID, this[a].SewID, this[a].Forge });
                     return tmp;
                 }
             }

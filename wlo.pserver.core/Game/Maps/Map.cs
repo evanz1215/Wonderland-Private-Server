@@ -36,6 +36,8 @@ namespace Game
         protected ConcurrentDictionary<uint, Tent> Tents;
         protected Dictionary<byte, WarpDest> Destinations;
         protected Dictionary<byte, WarpPortal> Portals;
+        protected Dictionary<ushort, Maps.ShopKeeper> ShopKeepers;
+        protected Dictionary<ushort, Maps.QuestNpc> QuestNpcs;
 
         protected Queue<Player> DisconnectedQueue;
         protected Queue<KeyValuePair<DateTime, Action>> WaitingtoLogin;
@@ -58,6 +60,8 @@ namespace Game
             //Battles = new ConcurrentDictionary<int, Battle>();
             Destinations = new Dictionary<byte, WarpDest>();
             Portals = new Dictionary<byte, WarpPortal>();
+            ShopKeepers = new Dictionary<ushort, Maps.ShopKeeper>();
+            QuestNpcs = new Dictionary<ushort, Maps.QuestNpc>();
         }
         public GameMap(Plugin.PluginHost host, System.IO.FileInfo src)
             : base(src)
@@ -72,6 +76,8 @@ namespace Game
             //Battles = new ConcurrentDictionary<int, Battle>();
             Destinations = new Dictionary<byte, WarpDest>();
             Portals = new Dictionary<byte, WarpPortal>();
+            ShopKeepers = new Dictionary<ushort, Maps.ShopKeeper>();
+            QuestNpcs = new Dictionary<ushort, Maps.QuestNpc>();
 
             LoadData();
 
@@ -156,6 +162,7 @@ namespace Game
         public virtual MapType Type { get { return MapType.RegularMap; } }
         public virtual uint MapID { get { lock (mlock) return m_mapid; } set { lock (mlock)m_mapid = value; } }
         public virtual string MapName { get { return ""; } }
+        public int PlayerCount { get { lock (mlock) return m_playerlist.Count; } }
         #endregion
 
         public void Dispose()
@@ -639,6 +646,53 @@ namespace Game
                 t.Send(new SendPacket(tmp.End()));
             }
 
+        #endregion
+
+        #region Player Lookup
+        public Player FindPlayer(uint charID)
+        {
+            return m_playerlist.FirstOrDefault(p => p.CharID == charID);
+        }
+
+        public Player FindPlayerByName(string name)
+        {
+            return m_playerlist.FirstOrDefault(p => string.Equals(p.CharName, name, StringComparison.OrdinalIgnoreCase));
+        }
+        #endregion
+
+        #region Shop
+        public Maps.ShopKeeper FindShop(ushort clickID)
+        {
+            Maps.ShopKeeper shop;
+            if (ShopKeepers.TryGetValue(clickID, out shop))
+                return shop;
+            return null;
+        }
+
+        public void AddShop(Maps.ShopKeeper shop)
+        {
+            if (shop != null && !ShopKeepers.ContainsKey(shop.CickID))
+                ShopKeepers.Add(shop.CickID, shop);
+        }
+
+        public Maps.QuestNpc FindQuestNpc(ushort clickID)
+        {
+            Maps.QuestNpc npc;
+            if (QuestNpcs.TryGetValue(clickID, out npc))
+                return npc;
+            return null;
+        }
+
+        public void AddQuestNpc(Maps.QuestNpc npc)
+        {
+            if (npc != null && !QuestNpcs.ContainsKey(npc.CickID))
+                QuestNpcs.Add(npc.CickID, npc);
+        }
+
+        public IEnumerable<Maps.QuestNpc> QuestNpcsList
+        {
+            get { return QuestNpcs.Values; }
+        }
         #endregion
 
         #region Tent

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
-using Phoenix.Core.Networking;
+using RCLibrary.Core.Networking;
 using System.Threading;
 
 namespace Server.Events
@@ -46,24 +46,21 @@ namespace Server.Events
                         if (onNotify != null)
                             foreach (var p in _work.Keys.Where(c => c is Game.Player)) onNotify((Game.Player)p);
 
-                Queue<Game.Player> dced = new Queue<Game.Player>(250);
+                var toRemove = new List<IEventRequester>();
 
-                ParallelOptions op = new ParallelOptions();
-                op.MaxDegreeOfParallelism = 1 + (_work.Count / 2);
-
-                Parallel.ForEach(_work.ToList(), p =>
+                foreach (var p in _work.ToList())
                 {
-                    if (p.Key is Game.Player)
+                    if (!p.Key.isThere)
+                        toRemove.Add(p.Key);
+                    else
                     {
-                        if (!(p.Key as Game.Player).isThere)
-                            dced.Enqueue((p.Key as Game.Player));
-                        else
-                            _work[p.Key]();
+                        try { _work[p.Key](); }
+                        catch { }
                     }
-                });
+                }
 
-                while (dced.Count > 0)
-                    _work.Remove(dced.Dequeue());
+                foreach (var key in toRemove)
+                    _work.Remove(key);
 
                 _lastExec = DateTime.Now;
             }

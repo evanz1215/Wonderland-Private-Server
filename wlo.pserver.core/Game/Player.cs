@@ -49,12 +49,27 @@ using Game.Maps;
         }
         
 
-        public class Player : Game.Character, IDisposable, INotifyPropertyChanged
+        public class Player : Game.Character, IDisposable, INotifyPropertyChanged, Game.Battle.Fighter
         {
             private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
             #region Events
             public event PlayerSocketInfo Disconnected;
+            /// <summary>
+            /// Static callback for level-up logging. Set by the main project (e.g., WorldServer).
+            /// </summary>
+            public static Action<Player, byte> OnPlayerLevelUp;
+
+            /// <summary>
+            /// Global EXP multiplier (e.g., 2.0 for double exp events). Set by WorldEventSystem.
+            /// </summary>
+            public static Func<double> GetExpMultiplier;
+
+            /// <summary>
+            /// Static callback to resolve quest template by ID. Set by main project.
+            /// </summary>
+            public static Func<int, QuestTemplate> GetQuestTemplate;
+
             #endregion
 
             #region Definitions
@@ -77,15 +92,31 @@ using Game.Maps;
             int slot;
             byte emote;
 
+            // Battle fields
+            BattleRole m_battlePosition;
+            Game.Battle.BattleAction m_battleAction;
+            Game.Battle.BattleSkill m_skillEffect;
+            byte m_gridX, m_gridY;
+            UInt16 m_clickID;
+            UInt32 m_ownerID;
+            DateTime m_rdEndTime;
+
             User m_useracc;
             Inventory m_inv;
             ClientSettings m_settings;
             Game.Battle.BattleScene m_battle;
-            //MailManager m_Mail;
-            //Friendlist m_friendlist;
+            Game.Maps.ShopKeeper m_interactingShop;
+            QuestManager m_questManager;
+            TeamManager m_team;
+            TradeManager m_trade;
+            FriendManager m_friends;
+            MailManager m_mail;
+            Game.Code.PetRelated.PetList m_petlist;
             //RiceBall m_riceball;
-            //PetList m_petlist;
             Tent m_tent;
+            Guild m_guild;
+            int m_curInstance;
+            DateTime m_muteUntil = DateTime.MinValue;
             #endregion
 
 
@@ -102,6 +133,12 @@ using Game.Maps;
                 onWearEquip = m_inv.onWearEquip;
                 onEquip_Remove = m_inv.onUnEquip;
                 m_tent = new Tent(this);
+                m_questManager = new QuestManager(this);
+                m_team = new TeamManager(this);
+                m_trade = new TradeManager(this);
+                m_friends = new FriendManager(this);
+                m_mail = new MailManager(this);
+                m_petlist = new Game.Code.PetRelated.PetList(this);
 
                 m_useracc = new User();
                 Flags = new PlayerFlagManager();
@@ -226,7 +263,45 @@ using Game.Maps;
             public byte Emote { get { lock (mlock)return emote; } set { lock (mlock)emote = value; } }
             //public cPetList Pets { get { return m_pets; } }
             public Tent Tent { get { return m_tent; } }
+            public Guild CurGuild { get { return m_guild; } set { m_guild = value; } }
+            public int CurInstance { get { return m_curInstance; } set { m_curInstance = value; } }
+            public bool IsMuted { get { return DateTime.Now < m_muteUntil; } }
+            public void Mute(int minutes) { m_muteUntil = DateTime.Now.AddMinutes(minutes); }
+            public void Unmute() { m_muteUntil = DateTime.MinValue; }
+
+            /// <summary>
+            /// Called when the player levels up. Broadcasts level-up effect to map.
+            /// </summary>
+            protected override void OnLevelUp(byte newLevel)
+            {
+                // Invoke logging callback (set by main project)
+                if (OnPlayerLevelUp != null)
+                    OnPlayerLevelUp(this, newLevel);
+
+                if (CurMap == null) return;
+
+                // Broadcast level-up visual effect to all players on the map
+                // AC 8,2 is used for level-up notification: [8][2][charID][newLevel]
+                SendPacket pkt = new SendPacket();
+                pkt.Pack8(8);
+                pkt.Pack8(2);
+                pkt.Pack32(CharID);
+                pkt.Pack8(newLevel);
+                CurMap.Broadcast(pkt);
+            }
             public Game.Battle.BattleScene MyBattle { get { return m_battle; } set { m_battle = value; } }
+            public Game.Maps.ShopKeeper InteractingShop { get { return m_interactingShop; } set { m_interactingShop = value; } }
+            public QuestManager Quests { get { return m_questManager; } }
+            public TeamManager Team { get { return m_team; } }
+            public TradeManager Trade { get { return m_trade; } }
+            public FriendManager Friends { get { return m_friends; } }
+            public MailManager Mail { get { return m_mail; } }
+            public Game.Code.PetRelated.PetList Pets { get { return m_petlist; } }
+
+            /// <summary>
+            /// Get equipped item by slot (1-6). Returns the Equip object.
+            /// </summary>
+            public Equip GetEquip(byte slot) { return this[slot]; }
             //public cRiceBall RiceBall { get { return m_riceball; } }
             //public SendType DataOut
             //{
@@ -288,60 +363,53 @@ using Game.Maps;
 
             #endregion
 
-            #region Fighter
-            //public BattleSide BattlePosition { get; set; }
-            //public eFighterType TypeofFighter { get; set; }
-            //public BattleAction myAction { get; set; }
-            //public UInt16 ClickID { get { return 0; } set { } }
-            //public UInt16 OwnerID { get { return 0; } set { } }
-            //public byte GridX { get; set; }
-            //public byte GridY { get; set; }
-            //public bool ActionDone { get { return (myAction != null || DateTime.Now > rndend); } }
-            //public DateTime RdEndTime { set { rndend = value; } }
-            //public Int32 MaxHP { get { return (Eqs != null) ? Eqs.FullHP : 0; } }
-            //public Int16 MaxSP { get { return (Eqs != null) ? (short)Eqs.FullSP : (short)0; } }
-            //public override int CurHP
-            //{
-            //    get
-            //    {
-            //        return base.CurHP;
-            //    }
-            //    set
-            //    {
-            //        base.CurHP = value;
-            //    }
-            //}
-            //public override int CurSP
-            //{
-            //    get
-            //    {
-            //        return base.CurSP;
-            //    }
-            //    set
-            //    {
-            //        base.CurSP = value;
-            //    }
-            //}
+            #region Fighter Interface
+            public uint ID { get { return CharID; } }
+            public BattleRole BattlePosition { get { return m_battlePosition; } set { m_battlePosition = value; } }
+            public eFighterType TypeofFighter { get { return eFighterType.player; } }
+            public FighterState BattleState
+            {
+                get
+                {
+                    if (CurHP <= 0) return FighterState.Dead;
+                    return FighterState.Alive;
+                }
+            }
+            public Game.Battle.BattleAction myAction { get { return m_battleAction; } set { m_battleAction = value; } }
+            public UInt16 ClickID { get { return m_clickID; } set { m_clickID = value; } }
+            public UInt32 OwnerID { get { return m_ownerID; } set { m_ownerID = value; } }
+            public byte GridX { get { return m_gridX; } set { m_gridX = value; } }
+            public byte GridY { get { return m_gridY; } set { m_gridY = value; } }
+            public bool ActionDone { get { return (m_battleAction != null || DateTime.Now > m_rdEndTime); } }
+            public DateTime RdEndTime { set { m_rdEndTime = value; } }
+            public Int32 MaxHP { get { return FullHP; } }
+            public Int16 MaxSP { get { return (short)FullSP; } }
+            public Game.Battle.BattleSkill SkillEffect { get { return m_skillEffect; } set { m_skillEffect = value; } }
 
+            public override int CurHP
+            {
+                get { return base.CurHP; }
+                set { base.CurHP = value; }
+            }
+            public override int CurSP
+            {
+                get { return base.CurSP; }
+                set { base.CurSP = value; }
+            }
+
+            public void OnNewBattle(Game.Battle.BattleScene battle)
+            {
+                MyBattle = battle;
+                m_battleAction = null;
+                m_skillEffect = null;
+            }
             #endregion
 
             #region Team
-            //public bool PartyLeader { get { return (m_teammembers[0] == this); } }
-            //public List<Player> TeamMembers { get { return m_teammembers.Skip(1).ToList(); } }
-            //public bool hasParty { get { return (m_teammembers.Count > 0); } }
-            //public SendPacket _13_6Data
-            //{
-            //    get
-            //    {
-            //        SendPacket f = new SendPacket();
-            //        f.PackArray(new byte[] { 13, 6 });
-            //        f.Pack32(ID);
-            //        f.Pack8((byte)m_teammembers.Count(c => c.ID != ID));
-            //        foreach (Player y in m_teammembers.Where(c => c.ID != ID))
-            //            f.Pack32(y.ID);
-            //        return f;
-            //    }
-            //}
+            public bool PartyLeader { get { return m_team.IsLeader; } }
+            public List<Player> TeamMembers { get { return m_team.TeamMembers; } }
+            public bool hasParty { get { return m_team.HasParty; } }
+            public SendPacket _13_6Data { get { return m_team.GetTeamDataPacket(); } }
             #endregion
 
             #endregion
@@ -386,14 +454,40 @@ using Game.Maps;
 
             }
             
+            /// <summary>
+            /// Queue a packet for dialog/interaction flow (sent via ContinueInteraction)
+            /// </summary>
+            public void QueuePacket(SendPacket p)
+            {
+                QueueData.Enqueue(p);
+            }
+
             public void ProcessSocket(IPacket g)
             {
                 try
                 {
-                    RecievePacket p = new RecievePacket(g.Buffer);
+                    byte[] raw;
+                    try
+                    {
+                        raw = g.Buffer.ToArray();
+                    }
+                    catch
+                    {
+                        DebugSystem.Write("Recv invalid buffer from " + SockAddress() + ", ignoring");
+                        return;
+                    }
+
+                    if (raw == null || raw.Length < 5)
+                    {
+                        DebugSystem.Write("Recv short packet from " + SockAddress() + " len=" + (raw == null ? 0 : raw.Length) + ", ignoring");
+                        return;
+                    }
+
+                    DebugSystem.Write(DebugItemType.Network_Heavy, "Recv Data from {0} len={1} AC={2}", SockAddress(), raw.Length, raw.Length > 4 ? raw[4].ToString() : "?");
+
+                    RecievePacket p = new RecievePacket(raw, raw.Length);
 
                     if (m_socket.isDisconnected()) { return; }
-                    DebugSystem.Write(DebugItemType.Network_Heavy, "Recv Data from {0} Data:{1}", SockAddress(), p.ToString());
                     p.SetPtr();
                     var b = p.Unpack8();
                     Network.ActionCodes.AC ac = Network.ActionCodes.AC.GetAction(b);
@@ -415,7 +509,12 @@ using Game.Maps;
 
 
                 }
-                catch (Exception f) { DebugSystem.Write(new ExceptionData(f)); m_socket.Disconnect(); }
+                catch (Exception f)
+                {
+                    DebugSystem.Write("ProcessSocket Error: " + f.Message);
+                    DebugSystem.Write("StackTrace: " + f.StackTrace);
+                    m_socket.Disconnect();
+                }
             }
 
             public void Disconnect()

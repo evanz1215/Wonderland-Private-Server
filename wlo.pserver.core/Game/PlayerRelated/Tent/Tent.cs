@@ -19,21 +19,34 @@ namespace Game.Code
     {
         Game.Player _owner;
         GameMap _ownerMap;
-        //List<TentFloor> _floors;
+        TentFloor[] _floors;
 
         uint _mapx, _mapy;
         bool _locked, firstime, _closed;
-
-        ushort _floorcolor = 39062, _wallcolor = 39064;
 
         public Tent(Game.Player src)
         {
             _owner = src;
             firstime = true;
-            //_floors = new List<TentFloor>();
-            //_floors.Add(new TentFloor() { MapID = (ushort)_floors.Count });
+            _floors = new TentFloor[2];
+            _floors[0] = new TentFloor();
+            _floors[1] = new TentFloor();
             _closed = true;
         }
+
+        /// <summary>
+        /// Access tent floor by index (0 = 1F, 1 = 2F)
+        /// </summary>
+        public TentFloor GetFloor(byte floor)
+        {
+            if (floor > 1) return null;
+            return _floors[floor];
+        }
+
+        public ushort Floor1Color { get { return _floors[0].FloorColor; } set { _floors[0].FloorColor = value; } }
+        public ushort Floor1Wall { get { return _floors[0].Wallpaper; } set { _floors[0].Wallpaper = value; } }
+        public ushort Floor2Color { get { return _floors[1].FloorColor; } set { _floors[1].FloorColor = value; } }
+        public ushort Floor2Wall { get { return _floors[1].Wallpaper; } set { _floors[1].Wallpaper = value; } }
 
         public uint X { get { return _mapx; } }
         public uint Y { get { return _mapy; } }
@@ -136,13 +149,16 @@ namespace Game.Code
 
 
 
-            //build queue
-            //storeroom
-            #region TentItems (62,4)
-            #endregion
+            // Send placed items for each floor
+            for (byte f = 0; f < 2; f++)
+            {
+                var itemPkt = _floors[f].GetItemListPacket(f);
+                if (itemPkt != null)
+                    t.Send(itemPkt);
+            }
 
-            t.Send(Tools.FromFormat("bbw", 62, 14, _floorcolor));//floor
-            t.Send(Tools.FromFormat("bbw", 62, 15, _wallcolor));//wallpaper
+            t.Send(Tools.FromFormat("bbw", 62, 14, _floors[0].FloorColor));   // floor color
+            t.Send(Tools.FromFormat("bbw", 62, 15, _floors[0].Wallpaper));    // wallpaper
 
             //65,11 ???
 
@@ -258,6 +274,106 @@ namespace Game.Code
         void onPlayerLeaving(Game.Player src)
         {
         }
+
+        #region Decoration
+
+        /// <summary>
+        /// Place an item from inventory into the tent.
+        /// Removes the item from inventory and places it on the specified floor.
+        /// </summary>
+        public void PlaceItem(Player src, byte invSlot, byte floor, ushort x, ushort y, ushort z, byte rotation)
+        {
+            if (src.CharID != _owner.CharID) return;
+            if (floor > 1) return;
+
+            var item = src.Inv[invSlot];
+            if (item == null || item.ItemID == 0) return;
+
+            byte slot = _floors[floor].PlaceItem(item.ItemID, x, y, z, rotation);
+            if (slot == 0)
+            {
+                // Floor full
+                src.Send(Tools.FromFormat("bbb", 62, 20, 1));
+                return;
+            }
+
+            src.Inv.RemoveItem(invSlot, 1);
+
+            // Broadcast placement to all players in tent (AC 62,5)
+            SendPacket pkt = new SendPacket();
+            pkt.Pack8(62);
+            pkt.Pack8(5);
+            pkt.Pack8(floor);
+            pkt.Pack8(slot);
+            pkt.Pack16(item.ItemID);
+            pkt.Pack16(x);
+            pkt.Pack16(y);
+            pkt.Pack16(z);
+            pkt.Pack8(rotation);
+            Broadcast(pkt);
+        }
+
+        /// <summary>
+        /// Pick up a placed item and return it to inventory.
+        /// </summary>
+        public void PickupItem(Player src, byte floor, byte slot)
+        {
+            if (src.CharID != _owner.CharID) return;
+            if (floor > 1) return;
+
+            ushort itemID = _floors[floor].RemoveItem(slot);
+            if (itemID == 0) return;
+
+            src.Inv.AddItem(itemID, 1);
+
+            // Broadcast removal (AC 62,6)
+            SendPacket pkt = new SendPacket();
+            pkt.Pack8(62);
+            pkt.Pack8(6);
+            pkt.Pack8(floor);
+            pkt.Pack8(slot);
+            Broadcast(pkt);
+        }
+
+        /// <summary>
+        /// Move/rotate a placed item within the tent.
+        /// </summary>
+        public void MoveItem(Player src, byte floor, byte slot, ushort x, ushort y, byte rotation)
+        {
+            if (src.CharID != _owner.CharID) return;
+            if (floor > 1) return;
+
+            if (!_floors[floor].MoveItem(slot, x, y, rotation)) return;
+
+            // Broadcast move (AC 62,7)
+            SendPacket pkt = new SendPacket();
+            pkt.Pack8(62);
+            pkt.Pack8(7);
+            pkt.Pack8(floor);
+            pkt.Pack8(slot);
+            pkt.Pack16(x);
+            pkt.Pack16(y);
+            pkt.Pack8(rotation);
+            Broadcast(pkt);
+        }
+
+        /// <summary>
+        /// Change floor color or wallpaper.
+        /// </summary>
+        public void SetFloorAppearance(Player src, byte floor, ushort floorColor, ushort wallpaper)
+        {
+            if (src.CharID != _owner.CharID) return;
+            if (floor > 1) return;
+
+            _floors[floor].FloorColor = floorColor;
+            _floors[floor].Wallpaper = wallpaper;
+
+            // Broadcast to all in tent
+            Broadcast(Tools.FromFormat("bbw", 62, 14, floorColor));
+            Broadcast(Tools.FromFormat("bbw", 62, 15, wallpaper));
+        }
+
+        #endregion
 
         public override void Process(Player src, RecievePacket data)
         {

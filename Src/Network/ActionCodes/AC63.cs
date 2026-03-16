@@ -90,21 +90,30 @@ namespace Network.ActionCodes
             {
                 int loginState = 0; //0-good login  1-bad un/pw  2-dup log 3-wrong version 4-need update
 
-                //sending username and password
-                string name = r.UnpackString();
-                string password = r.UnpackString();
+                // Packet format: [version:u16] [nameLen:u8] [name] [passLen:u8] [pass] [lcLen:u8] [key:u8] [lCode]
+                var rawBuf = r.Buffer.ToArray();
+                UInt16 version = r.Unpack16();
+                byte nameLen = r.Unpack8();
+                int ptr = r.GetPtr();
+                string name = Encoding.ASCII.GetString(rawBuf, ptr, nameLen);
+                r.SetPtr(ptr + nameLen);
+                byte passLen2 = r.Unpack8();
+                ptr = r.GetPtr();
+                string password = Encoding.ASCII.GetString(rawBuf, ptr, passLen2);
+                r.SetPtr(ptr + passLen2);
+                DebugSystem.Write("Login attempt: user='" + name + "' pass='" + password + "' ver=" + version);
                 name = name.ToLower();
 
                 string[] userdata = null;//data of user
 
-                UInt16 version = r.Unpack16();
                 byte lcLen = r.Unpack8();
                 byte key = r.Unpack8();
                 char[] lCode = new char[20];
-                Array.Copy(r.Buffer, r.GetPtr(), lCode, 0, lcLen);
-                for (int n = 0; n < lcLen; n++)
-                    lCode[n] = (char)((byte)lCode[n] ^ (byte)key);
-                r.SetPtr((int)(r.GetPtr() + lcLen));
+                ptr = r.GetPtr();
+                var buf = r.Buffer;
+                for (int n = 0; n < lcLen && ptr + n < buf.Count(); n++)
+                    lCode[n] = (char)(buf.ElementAt(ptr + n) ^ key);
+                r.SetPtr(ptr + lcLen);
 
                 if ((name.Length < 4) || (name.Length > 14))
                 {
@@ -160,6 +169,7 @@ namespace Network.ActionCodes
                 //    loginState = 6;
 
                 #region Result of Login State
+                DebugSystem.Write("Login result: state=" + loginState + " user='" + name + "'");
                 // here we do the results of loginstate
                 switch (loginState)
                 {

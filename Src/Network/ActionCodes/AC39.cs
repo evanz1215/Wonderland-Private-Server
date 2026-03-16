@@ -1,173 +1,277 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Wonderland_Private_Server.Code.Objects;
-using Wonderland_Private_Server.Network;
-using Wlo.Core;
+using Game;
+using Game.Maps;
+using Network;
 
-namespace Wonderland_Private_Server.ActionCodes
+namespace Network.ActionCodes
 {
-    public class AC39 : AC
+    /// <summary>
+    /// AC 39 — Guild System
+    /// Sub 2: Invite member
+    /// Sub 3: Accept invite
+    /// Sub 4: Guild mail (stub)
+    /// Sub 6: Leave guild
+    /// Sub 7: Dismiss member
+    /// Sub 8: Tab message
+    /// Sub 9: Edit rules
+    /// Sub 11: Remove vice leader
+    /// Sub 14: Appoint vice leader
+    /// Sub 16: Change permissions
+    /// Sub 18: Change insignia
+    /// Sub 20: Deposit to warehouse
+    /// Sub 21: Withdraw from warehouse
+    /// Sub 22: View warehouse
+    /// </summary>
+    public class AC39_Guild : AC
     {
         public override int ID { get { return 39; } }
-        public override void ProcessPkt(ref Player p, RecvPacket r)
-        {
 
-            switch (r.B)
+        public override void ProcessPkt(Player c, RecievePacket p)
+        {
+            switch (p.B)
             {
-                // case 1: Recv1(ref r, p); break;
-                case 2: Recv2(ref p, r); break;// request NEW MEMBER TO GUILD
-                case 3: Recv3(ref p, r); break; // acept resquest guild
-                case 4: Recv4(ref p, r); break; // Guild EMAIL
-                case 6: Recv6(ref p, r); break;// leave guild
-                case 7: Recv7(ref p, r); break; // Demiss member
-                case 8: Recv8(ref p, r); break; // TAB MESSAGE
-                case 9: Recv9(ref p, r); break; // edit rule
-                case 11: Recv11(ref p, r); break;//Remove HOLD THE POST OF VIC ORG
-                case 14: Recv14(ref p, r); break;//HOLD THE POST OF VICE ORGLEADER
-                case 16: Recv16(ref p, r); break;//PERMISSION
-                case 18: Recv18(ref p, r); break; // change insigna guild
-                default: Utilities.LogServices.Log("AC " + r.A + "," + r.B + " has not been coded"); break;
+                case 2: Recv_Invite(c, p); break;
+                case 3: Recv_AcceptInvite(c, p); break;
+                case 4: Recv_GuildMail(c, p); break;
+                case 6: Recv_LeaveGuild(c, p); break;
+                case 7: Recv_DismissMember(c, p); break;
+                case 8: Recv_TabMessage(c, p); break;
+                case 9: Recv_EditRule(c, p); break;
+                case 11: Recv_RemoveViceLeader(c, p); break;
+                case 14: Recv_AppointViceLeader(c, p); break;
+                case 16: Recv_ChangePermission(c, p); break;
+                case 18: Recv_ChangeInsignia(c, p); break;
+                case 20: Recv_WarehouseDeposit(c, p); break;
+                case 21: Recv_WarehouseWithdraw(c, p); break;
+                case 22: Recv_WarehouseView(c, p); break;
+                default: DebugSystem.Write("AC 39," + p.B + " has not been coded"); break;
             }
         }
-        void Recv2(ref Player p, RecvPacket r)
+
+        /// <summary>
+        /// Invite a player on the same map to the guild.
+        /// Packet: [39][2][targetCharID:uint]
+        /// </summary>
+        void Recv_Invite(Player r, RecievePacket p)
         {
             try
             {
-                uint m = r.Unpack32(); // get request member id               
+                if (r.CurGuild == null) return;
 
-                if (p.CurrentMap.Players.ContainsKey(m))
+                p.SetPtr(6);
+                uint targetID = p.Unpack32();
+
+                if (r.CurMap is GameMap)
                 {
-                  //  p.CurrentMap.Players[m].GuildID = p.CurGuild.GuildID;
-
-                    SendPacket s = new SendPacket();
-                    s.Pack(new byte[] { 39, 3 });
-                    s.Pack(p.UserID);
-                    cGlobal.WLO_World.BroadcastTo(s, directTo: m);
-                }
-            }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
-        }
-        void Recv3(ref Player p, RecvPacket r)
-        {
-            try
-            {
-                uint m = r.Unpack32(); // get request member id
-                if (p.CurrentMap.Players.ContainsKey(m))
-                {                    
-                    p.CurrentMap.Players[m].CurGuild.AddNewMemberGuild(p,m);
-                }
-                
-            }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
-        }
-        void Recv4(ref Player p, RecvPacket r)
-        {
-            try
-            {
-                //uint dst = r.Unpack32(3); // get member id
-                //string text = r.UnpackNChar(7);
-                //p.CurGuild.GuilMail(p.UserID,dst, text);
-            }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
-        }
-        void Recv6(ref Player p, RecvPacket r)
-        {
-            try
-            {
-                p.CurGuild.LeaveGuild(ref p);
-            }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
-        }
-        void Recv7(ref Player p, RecvPacket r)
-        {
-            uint target = r.Unpack32();
-            try
-            {
-                if (p.CurGuild.Leader.ID == p.UserID)
-                {
-                    p.CurGuild.Dismiss(target, p.UserID);
-                }
-            }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
-        }
-        void Recv8(ref Player p, RecvPacket r)
-        {
-            try
-            {
-                
-            }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
-        }
-
-        void Recv9(ref Player p, RecvPacket r)
-        {
-            try
-            {               
-                    if (p.CurGuild.Leader.ID == p.UserID)
+                    var target = ((GameMap)r.CurMap).FindPlayer(targetID);
+                    if (target != null)
                     {
-
-                        p.CurGuild.Edit_Rule(r.UnpackStringN());
-                    }                
+                        SendPacket s = new SendPacket();
+                        s.PackArray(new byte[] { 39, 3 });
+                        s.Pack32(r.CharID);
+                        target.Send(s);
+                    }
+                }
             }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
+            catch (Exception t) { DebugSystem.Write(t.ToString()); }
         }
-        void Recv11(ref Player p, RecvPacket r)
+
+        /// <summary>
+        /// Accept guild invitation.
+        /// Packet: [39][3][inviterCharID:uint]
+        /// </summary>
+        void Recv_AcceptInvite(Player r, RecievePacket p)
         {
             try
             {
-                uint target = r.Unpack32();
+                p.SetPtr(6);
+                uint inviterID = p.Unpack32();
 
-                if (p.CurGuild.Leader.ID == p.UserID)
+                if (r.CurMap is GameMap)
                 {
-                    p.CurGuild.RemoveHoldThePostOfViceOrgleader(p,target);
+                    var inviter = ((GameMap)r.CurMap).FindPlayer(inviterID);
+                    if (inviter != null && inviter.CurGuild != null)
+                    {
+                        inviter.CurGuild.AddNewMemberGuild(r, inviterID);
+                    }
                 }
             }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
+            catch (Exception t) { DebugSystem.Write(t.ToString()); }
         }
-        void Recv14(ref Player p, RecvPacket r)
+
+        /// <summary>
+        /// Guild mail (stub).
+        /// </summary>
+        void Recv_GuildMail(Player r, RecievePacket p)
+        {
+            // Not yet implemented
+        }
+
+        /// <summary>
+        /// Leave current guild.
+        /// Packet: [39][6]
+        /// </summary>
+        void Recv_LeaveGuild(Player r, RecievePacket p)
         {
             try
             {
-                uint target = r.Unpack32();               
-
-                if (p.CurGuild.Leader.ID == p.UserID)
-                {
-                    p.CurGuild.HoldThePostOfViceOrgleader(target, r.Unpack8());
-                }
+                if (r.CurGuild == null) return;
+                r.CurGuild.LeaveGuild(r);
             }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
+            catch (Exception t) { DebugSystem.Write(t.ToString()); }
         }
 
-        void Recv16(ref Player p, RecvPacket r)
+        /// <summary>
+        /// Dismiss a member (leader only).
+        /// Packet: [39][7][targetCharID:uint]
+        /// </summary>
+        void Recv_DismissMember(Player r, RecievePacket p)
         {
             try
             {
-                uint target = r.Unpack32();             
+                if (r.CurGuild == null) return;
+                if (r.CurGuild.Leader.ID != r.CharID) return;
 
-                if (p.CurGuild.Leader.ID == p.UserID) // holy leader have this permission
-                {
-                    p.CurGuild.ChangePermissionMember(target,r);
-                }
+                p.SetPtr(6);
+                uint target = p.Unpack32();
+                r.CurGuild.Dismiss(target, r.CharID);
             }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
+            catch (Exception t) { DebugSystem.Write(t.ToString()); }
         }
 
-        void Recv18(ref Player p, RecvPacket r)
+        /// <summary>
+        /// Tab message (stub).
+        /// </summary>
+        void Recv_TabMessage(Player r, RecievePacket p)
+        {
+            // Not yet implemented
+        }
+
+        /// <summary>
+        /// Edit guild rules (leader only).
+        /// Packet: [39][9][ruleText:stringN]
+        /// </summary>
+        void Recv_EditRule(Player r, RecievePacket p)
         {
             try
             {
-                if (p.CurGuild.Leader.ID == p.UserID) // or vices + permition.
-                {
-                    p.CurGuild.ChangInsigneGuild(ref p,r);
-                }
+                if (r.CurGuild == null) return;
+                if (r.CurGuild.Leader.ID != r.CharID) return;
+
+                p.SetPtr(6);
+                string text = p.UnpackStringN();
+                r.CurGuild.Edit_Rule(text);
             }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
-
+            catch (Exception t) { DebugSystem.Write(t.ToString()); }
         }
-        
 
+        /// <summary>
+        /// Remove a vice leader (leader only).
+        /// Packet: [39][11][targetCharID:uint]
+        /// </summary>
+        void Recv_RemoveViceLeader(Player r, RecievePacket p)
+        {
+            try
+            {
+                if (r.CurGuild == null) return;
+                if (r.CurGuild.Leader.ID != r.CharID) return;
+
+                p.SetPtr(6);
+                uint target = p.Unpack32();
+                r.CurGuild.RemoveHoldThePostOfViceOrgleader(r, target);
+            }
+            catch (Exception t) { DebugSystem.Write(t.ToString()); }
+        }
+
+        /// <summary>
+        /// Appoint a vice leader (leader only).
+        /// Packet: [39][14][targetCharID:uint][type:byte]
+        /// </summary>
+        void Recv_AppointViceLeader(Player r, RecievePacket p)
+        {
+            try
+            {
+                if (r.CurGuild == null) return;
+                if (r.CurGuild.Leader.ID != r.CharID) return;
+
+                p.SetPtr(6);
+                uint target = p.Unpack32();
+                byte type = p.Unpack8();
+                r.CurGuild.HoldThePostOfViceOrgleader(target, type);
+            }
+            catch (Exception t) { DebugSystem.Write(t.ToString()); }
+        }
+
+        /// <summary>
+        /// Change member permissions (leader only).
+        /// Packet: [39][16][targetCharID:uint][permData...]
+        /// </summary>
+        void Recv_ChangePermission(Player r, RecievePacket p)
+        {
+            try
+            {
+                if (r.CurGuild == null) return;
+                if (r.CurGuild.Leader.ID != r.CharID) return;
+
+                p.SetPtr(6);
+                uint target = p.Unpack32();
+                r.CurGuild.ChangePermissionMember(target, p);
+            }
+            catch (Exception t) { DebugSystem.Write(t.ToString()); }
+        }
+
+        /// <summary>
+        /// Change guild insignia (leader only).
+        /// </summary>
+        void Recv_ChangeInsignia(Player r, RecievePacket p)
+        {
+            try
+            {
+                if (r.CurGuild == null) return;
+                if (r.CurGuild.Leader.ID != r.CharID) return;
+                r.CurGuild.ChangInsigneGuild(r, p);
+            }
+            catch (Exception t) { DebugSystem.Write(t.ToString()); }
+        }
+
+        /// <summary>
+        /// Deposit item into guild warehouse.
+        /// Packet: [39][20][invSlot:byte]
+        /// </summary>
+        void Recv_WarehouseDeposit(Player r, RecievePacket p)
+        {
+            if (r.CurGuild == null) return;
+
+            p.SetPtr(6);
+            byte invSlot = p.Unpack8();
+            r.CurGuild.DepositItem(r, invSlot);
+        }
+
+        /// <summary>
+        /// Withdraw item from guild warehouse.
+        /// Packet: [39][21][warehouseSlot:byte]
+        /// </summary>
+        void Recv_WarehouseWithdraw(Player r, RecievePacket p)
+        {
+            if (r.CurGuild == null) return;
+
+            p.SetPtr(6);
+            byte slot = p.Unpack8();
+            r.CurGuild.WithdrawItem(r, slot);
+        }
+
+        /// <summary>
+        /// View guild warehouse contents.
+        /// Packet: [39][22]
+        /// </summary>
+        void Recv_WarehouseView(Player r, RecievePacket p)
+        {
+            if (r.CurGuild == null) return;
+            r.CurGuild.SendWarehouseList(r);
+        }
     }
 }

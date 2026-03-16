@@ -13,6 +13,10 @@ namespace Game.Code
 {
     public class Equip : Item
     {
+        /// <summary>
+        /// Forge multiplier: each forge level adds 5% bonus to base stats
+        /// </summary>
+        double ForgeMultiplier { get { return 1.0 + (Forge * 0.05); } }
 
         #region Properties
         public Int32 HP
@@ -22,7 +26,7 @@ namespace Game.Code
                 int val = 0;
                 val += (Data.StatusType[0] == 207) ? (Int32)Data.StatusUp[0] : 0;
                 val += (Data.StatusType[1] == 207) ? (Int32)Data.StatusUp[1] : 0;
-                return val;
+                return (int)(val * ForgeMultiplier);
             }
         }
 
@@ -33,7 +37,7 @@ namespace Game.Code
                 int val = 0;
                 val += (Data.StatusType[0] == 208) ? (Int32)Data.StatusUp[0] : 0;
                 val += (Data.StatusType[1] == 208) ? (Int32)Data.StatusUp[1] : 0;
-                return val;
+                return (int)(val * ForgeMultiplier);
             }
         }
 
@@ -44,7 +48,7 @@ namespace Game.Code
                 int val = 0;
                 val += (Data.StatusType[0] == 210) ? (Int32)Data.StatusUp[0] : 0;
                 val += (Data.StatusType[1] == 210) ? (Int32)Data.StatusUp[1] : 0;
-                return val;
+                return (int)(val * ForgeMultiplier);
             }
         }
 
@@ -55,7 +59,7 @@ namespace Game.Code
                 int val = 0;
                 val += (Data.StatusType[0] == 211) ? (Int32)Data.StatusUp[0] : 0;
                 val += (Data.StatusType[1] == 211) ? (Int32)Data.StatusUp[1] : 0;
-                return val;
+                return (int)(val * ForgeMultiplier);
             }
         }
 
@@ -66,7 +70,7 @@ namespace Game.Code
                 int val = 0;
                 val += (Data.StatusType[0] == 215) ? (Int32)Data.StatusUp[0] : 0;
                 val += (Data.StatusType[1] == 215) ? (Int32)Data.StatusUp[1] : 0;
-                return val;
+                return (int)(val * ForgeMultiplier);
             }
         }
 
@@ -77,7 +81,7 @@ namespace Game.Code
                 int val = 0;
                 val += (Data.StatusType[0] == 216) ? (Int32)Data.StatusUp[0] : 0;
                 val += (Data.StatusType[1] == 216) ? (Int32)Data.StatusUp[1] : 0;
-                return val;
+                return (int)(val * ForgeMultiplier);
             }
         }
 
@@ -88,7 +92,7 @@ namespace Game.Code
                 int val = 0;
                 val += (Data.StatusType[0] == 214) ? (Int32)Data.StatusUp[0] : 0;
                 val += (Data.StatusType[1] == 214) ? (Int32)Data.StatusUp[1] : 0;
-                return val;
+                return (int)(val * ForgeMultiplier);
             }
         }
 
@@ -358,10 +362,12 @@ namespace Game.Code
                         if (m_currexp + expgain >= exptolvl)
                         {
                             SkillPoints += 5;
+                            m_potential += CalcPotentialGain(Level);
                             m_currexp = 0;
                             TotalExp += remainexp;
                             expgain -= remainexp;
                             Send8_1(true);
+                            OnLevelUp(Level);
                         }
                         else
                         {
@@ -1137,7 +1143,7 @@ namespace Game.Code
                 {
                     Dictionary<byte, uint[]> tmp = new Dictionary<byte, uint[]>();
                     for (byte a = 1; a < 7; a++)
-                        tmp.Add(a, new uint[] { this[a].ItemID, this[a].Damage, this[a].Ammt, (uint)this[a].Wear_At, 0, 0, 0, 0 });
+                        tmp.Add(a, new uint[] { this[a].ItemID, this[a].Damage, this[a].Ammt, (uint)this[a].Wear_At, this[a].SocketID, this[a].BombID, this[a].SewID, this[a].Forge });
                     return tmp;
                 }
             }
@@ -1153,6 +1159,7 @@ namespace Game.Code
         /// 
         public virtual void ProcessSocket(Player src, RecievePacket p)
         {
+            if (p.Buffer == null || p.Buffer.Count() < 6) return;
             p.SetPtr();
 
             var a = p.Unpack8();
@@ -1256,6 +1263,7 @@ namespace Game.Code
                     tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 35, 1, Level, 0));
                     tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 37, 1, (Level - 1), 0));
                     tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 38, 1, SkillPoints, 0));
+                    tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 34, 1, Potential, 0));
                     CurHP = FullHP;
                     CurSP = FullSP;
                 }
@@ -1495,6 +1503,18 @@ namespace Game.Code
                 }
             }
         }
+        /// <summary>
+        /// Calculate potential points gained per level up.
+        /// Non-reborn: 1 point per level. Reborn: 2 points per level.
+        /// Every 10 levels grants a bonus +3 points.
+        /// </summary>
+        int CalcPotentialGain(byte level)
+        {
+            int gain = Reborn ? 2 : 1;
+            if (level % 10 == 0) gain += 3;
+            return gain;
+        }
+
         public void FillHP()
         {
             m_curhp = (int)FullHP;
@@ -1518,6 +1538,32 @@ namespace Game.Code
                 case 33: baseWis = (ushort)value; break;
             }
         }
+
+        /// <summary>
+        /// Allocate potential points into a base stat.
+        /// Returns true if successful.
+        /// Stat IDs: 28=Str, 29=Con, 30=Agi, 27=Int, 33=Wis
+        /// </summary>
+        public bool AllocateStat(byte statID, byte amount)
+        {
+            lock (m_Lock)
+            {
+                if (amount == 0 || m_potential < amount) return false;
+
+                switch (statID)
+                {
+                    case 28: baseStr += amount; break;
+                    case 29: baseCon += amount; break;
+                    case 30: baseAgi += amount; break;
+                    case 27: baseInt += amount; break;
+                    case 33: baseWis += amount; break;
+                    default: return false;
+                }
+
+                m_potential -= amount;
+                return true;
+            }
+        }
         public IEnumerable<object[]> GetStatArray()
         {
             List<object[]> tmp = new List<object[]>();
@@ -1532,6 +1578,139 @@ namespace Game.Code
             tmp.Add(new object[] { 33, baseWis });
             return tmp;
         }
+        #endregion
+
+        /// <summary>
+        /// Called when the character levels up. Override in Player for broadcast/logging.
+        /// </summary>
+        protected virtual void OnLevelUp(byte newLevel) { }
+
+        #region Reborn System
+
+        /// <summary>
+        /// Minimum level required to perform reborn.
+        /// </summary>
+        const int REBORN_LEVEL_REQ = 199;
+
+        /// <summary>
+        /// Bonus potential points awarded on reborn.
+        /// </summary>
+        const int REBORN_BONUS_POTENTIAL = 200;
+
+        /// <summary>
+        /// Check if the character can perform reborn.
+        /// </summary>
+        public bool CanReborn()
+        {
+            lock (m_Lock)
+            {
+                if (Reborn) return false; // already reborn
+                if (Level < REBORN_LEVEL_REQ) return false;
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Execute the reborn process.
+        /// Resets level to 1 (reborn), sets job, redistributes stats.
+        /// </summary>
+        /// <param name="selectedJob">The RebornJob the player has chosen (1-7).</param>
+        /// <returns>True if reborn was successful.</returns>
+        public bool PerformReborn(RebornJob selectedJob)
+        {
+            lock (m_Lock)
+            {
+                if (Reborn) return false;
+                if (Level < REBORN_LEVEL_REQ) return false;
+                if (selectedJob == RebornJob.none) return false;
+
+                // Set job (this makes Reborn == true)
+                job = selectedJob;
+
+                // Reset experience to 0 (reborn level 1)
+                m_totalexp = 0;
+                m_currexp = 0;
+
+                // Calculate total stat points invested
+                int totalStats = baseStr + baseInt + baseWis + baseCon + baseAgi;
+
+                // Reset base stats to 1
+                baseStr = 1;
+                baseInt = 1;
+                baseWis = 1;
+                baseCon = 1;
+                baseAgi = 1;
+
+                // Convert invested stats to potential + bonus
+                m_potential = totalStats + REBORN_BONUS_POTENTIAL;
+
+                // Reset skill points
+                m_skillpoint = 0;
+
+                // Full heal
+                m_curhp = (int)FullHP;
+                m_cursp = FullSP;
+
+                // Send full stat update to client
+                SendRebornUpdate();
+
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Send the full reborn stat update to the client.
+        /// </summary>
+        void SendRebornUpdate()
+        {
+            PacketBuilder tmp = new PacketBuilder();
+            tmp.Begin(null);
+
+            // Level & exp
+            tmp.Add(Tools.FromFormat("bbbbl", 8, 1, 36, 1, TotalExp));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 35, 1, Level, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 37, 1, 0, 0)); // previous level display
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 38, 1, SkillPoints, 0));
+
+            // Reborn flag & job
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 46, 1, (byte)(Reborn ? 1 : 0), 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 47, 1, (byte)Job, 0));
+
+            // HP/SP
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 205, 1, FullHP, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 207, 1, EquippedMaxHP, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 25, 1, CurHP, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 206, 1, FullSP, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 208, 1, EquippedMaxSP, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 26, 1, CurSP, 0));
+
+            // Stats
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 28, 1, Str, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 210, 1, EquippedATK, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 41, 1, FullAtk, 0));
+
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 29, 1, Con, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 211, 1, EquippedDEF, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 42, 1, FullDef, 0));
+
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 30, 1, Agi, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 214, 1, EquippedSPD, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 45, 1, FullSpd, 0));
+
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 27, 1, Int, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 215, 1, EquippedMAT, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 43, 1, FullMatk, 0));
+
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 33, 1, Wis, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 216, 1, EquippedMDF, 0));
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 44, 1, FullMdef, 0));
+
+            // Potential
+            tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 34, 1, Potential, 0));
+
+            Send(new SendPacket(tmp.End()));
+        }
+
         #endregion
     }
 

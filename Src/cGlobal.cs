@@ -28,6 +28,7 @@ namespace System
         public static DataBase.GameDataBase gGameDataBase;
 
         public static DataFiles.PhxItemDat ItemDatManager;
+        public static Wonderland_Private_Server.DataManagement.DataFiles.SkillDataFile gSkillManager;
 
         public static LoginServer gLoginServer;
         public static WorldServer gWorld;
@@ -39,8 +40,10 @@ namespace System
         #region Systems
         public static TaskManager ApplicationTasks;
         public static UpdateSystem Update_System;
-        //public static Instance gInstanceSystem = new Instance();
-        //public static GuildSystem gGuildSystem = new GuildSystem();
+        public static Game.InstanceSystem gInstanceSystem = new Game.InstanceSystem();
+        public static Game.GuildSystem gGuildSystem = new Game.GuildSystem();
+        public static Server.Events.WorldEventSystem gWorldEvents = new Server.Events.WorldEventSystem();
+        public static Game.QuestTemplateManager gQuestTemplates = new Game.QuestTemplateManager();
 
         #endregion
 

@@ -1,10 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Game;
+using Game.Battle;
 using DataFiles;
+using Network;
 
 
 namespace Game.Code.PetRelated
@@ -14,16 +16,24 @@ namespace Game.Code.PetRelated
         string name;
 
         public UInt32 OwnerID { get { return (owner != null) ? owner.CharID : 0; } set { } }
-        public uint ID { get { return npcData.NpcID; } }
+        public uint ID { get { return (npcData != null) ? npcData.NpcID : m_npcIDRaw; } }
         public byte Amity { get { return m_amity; } set { m_amity = value; } }
-        public string Name { get { return (!string.IsNullOrEmpty(name)) ? name : ASCIIEncoding.ASCII.GetString(npcData.NpcName); } }
+        public string Name
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(name)) return name;
+                if (!string.IsNullOrEmpty(m_nameRaw)) return m_nameRaw;
+                if (npcData != null) return ASCIIEncoding.ASCII.GetString(npcData.NpcName);
+                return "";
+            }
+        }
 
-        //public Skill Skill1 { get { return new Skill(); } }
-        //public Skill Skill2 { get { return new Skill(); } }
-        //public Skill Skill3 { get { return new Skill(); } }
+        ushort m_npcIDRaw;
+        string m_nameRaw;
 
-        public Pet(byte mslot, Npc src, Player owner)
-            : base(new Action<RCLibrary.Core.Networking.IPacket>(owner.SendPacket))
+        public Pet(byte mslot, PhoneixNpc src, Player owner)
+            : base(new Action<SendPacket>(owner.Send))
         {
             Slot = mslot;
             this.owner = owner;
@@ -37,40 +47,46 @@ namespace Game.Code.PetRelated
             base.Agi = npcData.AGI;
         }
 
+        /// <summary>
+        /// Construct a Pet from raw stat values (for captures/DB loads without PhoneixNpc data).
+        /// </summary>
+        public Pet(byte mslot, Player owner, ushort npcID, string name,
+            ushort str, ushort con, ushort intl, ushort wis, ushort agi, byte element)
+            : base(new Action<SendPacket>(owner.Send))
+        {
+            Slot = mslot;
+            this.owner = owner;
+            m_npcIDRaw = npcID;
+            m_nameRaw = name;
+            m_amity = 60;
+            Element = (Affinity)element;
+
+            base.Str = str;
+            base.Con = con;
+            base.Int = intl;
+            base.Wis = wis;
+            base.Agi = agi;
+        }
+
         #region Fighter Properties
         public FighterState BattleState { get { return FighterState.Alive; } }
-        ////public Skill SkillEffect { get; set; }
-        public BattleSide BattlePosition { get; set; }
-        public eFighterType TypeofFighter { get { return eFighterType.Npc; } }
+        public BattleRole BattlePosition { get; set; }
+        public eFighterType TypeofFighter { get { return eFighterType.Pet; } }
         public BattleAction myAction { get; set; }
         public UInt16 ClickID { get { return 0; } set { } }
         public byte GridX { get; set; }
         public byte GridY { get; set; }
-        //public bool ActionDone { get { return (myAction != null || DateTime.Now > rndend); } }
-        //public DateTime RdEndTime { set { rndend = value; } }
         public Int32 MaxHP { get { return FullHP; } }
         public Int16 MaxSP { get { return (short)FullSP; } }
         public override int CurHP
         {
-            get
-            {
-                return base.CurHP;
-            }
-            set
-            {
-                base.CurHP = value;
-            }
+            get { return base.CurHP; }
+            set { base.CurHP = value; }
         }
         public override int CurSP
         {
-            get
-            {
-                return base.CurSP;
-            }
-            set
-            {
-                base.CurSP = value;
-            }
+            get { return base.CurSP; }
+            set { base.CurSP = value; }
         }
 
         #endregion
@@ -93,7 +109,7 @@ namespace Game.Code.PetRelated
             {
                 m_battlepet = value;
                 if (value != null && host != null)
-                    host.SendPacket(SendPacket.FromFormat("bbd", 19, 1, value.ID));
+                    host.Send(Tools.FromFormat("bbd", 19, 1, value.ID));
             }
         }
         public Pet RidePet { get { return m_ridepet; } set { m_ridepet = value; } }
@@ -103,241 +119,300 @@ namespace Game.Code.PetRelated
             {
                 lock (mylock)
                 {
-                    // If this key is in the dictionary, return its value.
                     if (petlist.ContainsKey(key))
-                    {
-                        // The key was found; return its value. 
                         return petlist[key];
-                    }
-                    else
-                    {
-                        // The key was not found; return null. 
-                        return null;
-                    }
+                    return null;
                 }
             }
-
             set
             {
                 lock (mylock)
                 {
-                    // If this key is in the dictionary, change its value. 
                     if (petlist.ContainsKey(key))
-                    {
-                        // The key was found; change its value.
                         petlist[key] = value;
-                    }
                 }
             }
         }
+
+        public int Count { get { return petlist.Count; } }
+
+        /// <summary>
+        /// Get all pet slots and pets for DB persistence.
+        /// </summary>
+        public IEnumerable<KeyValuePair<byte, Pet>> AllPets
+        {
+            get { lock (mylock) { return petlist.ToList(); } }
+        }
+
         public PetList(Player i)
         {
             host = i;
             petlist = new Dictionary<byte, Pet>(20);
-
         }
 
-
-        //public characterPet GetPetinBattleMode()
-        //{
-        //    foreach (characterPet e in myPets)
-        //    {
-        //        if (e.NpcID != 0)
-        //            if (e.state == PetStatus.Battle && e.inPetGroup)
-        //                return e;
-        //    }
-        //    return null;
-        //}
-
-        //public characterPet GetByID(UInt16 id)
-        //{
-        //    foreach (characterPet p in myPets)
-        //        if (p.NpcID == id) return p;
-        //    return null;
-        //}
-        //public characterPet GetBtSlot(byte slot)
-        //{
-        //    return myGroupPets[slot - 1];
-        //}
-
+        /// <summary>
+        /// Send pet stat data for all pets in slots 1-4
+        /// </summary>
         public void SendPetlistStatData()
         {
-
-            //for (byte n = 1; n <= 4; n++)
-            //{
-            //    if (petlist.ContainsKey(n) && petlist[n] != null)
-            //        petlist[n].Send8_1();
-            //}
-        }
-        public SendPacket PetlistData
-        {
-            get
+            for (byte n = 1; n <= 4; n++)
             {
-                SendPacket p = new SendPacket();
-
-                p.Pack(new byte[] { 15, 8 });
-
-                for (byte n = 1; n <= 4; n++)
-                {
-                    if (petlist.ContainsKey(n) && petlist[n] != null)
-                    {
-                        p.Pack(n);
-                        p.Pack(((ushort)petlist[n].ID));
-                        p.Pack((uint)petlist[n].TotalExp);
-                        p.Pack((byte)petlist[n].Level);
-                        p.Pack(100);// p.Pack((uint)petlist[n].CurHP);
-                        p.Pack((ushort)100);// p.Pack16((ushort)petlist[n].CurSP);
-                        p.Pack((ushort)5);// p.Pack16(petlist[n].Int);
-                        p.Pack((ushort)5);//p.Pack16(petlist[n].Str);
-                        p.Pack((ushort)5);//p.Pack16(petlist[n].Con);
-                        p.Pack((ushort)5);//p.Pack16(petlist[n].Agi);
-                        p.Pack((ushort)5);//p.Pack16(petlist[n].Wis);
-                        p.Pack((byte)0);
-                        p.Pack(petlist[n].Amity);
-                        p.Pack((ushort)1);
-                        p.Pack((byte)0);
-
-                        //p.Pack((byte)petlist[n].Skill1.Grade);
-                        //p.Pack(petlist[n].Skill1.Exp);
-                        //p.Pack((byte)petlist[n].Skill2.Grade);
-                        //p.Pack(petlist[n].Skill2.Exp);
-                        //p.Pack((byte)(petlist[n].Reborn) ? petlist[n].Skill3.Grade : (byte)0);
-                        //p.Pack((petlist[n].Reborn) ? petlist[n].Skill3.Exp : (byte)0);
-                        p.Pack(petlist[n].FullEqData);
-                        p.Pack((ushort)0);
-                        p.Pack((byte)0);//reborn?
-                        p.Pack((byte)0);//potential
-                    }
-                }
-                //if (p.Data.Count > 7)
-                //    return p;
-                //else
-                return null;
+                if (petlist.ContainsKey(n) && petlist[n] != null)
+                    petlist[n].Send8_1();
             }
         }
 
-        //public void RecievePet(Npc src, uint orride)
-        //{
-        //    src.NpcID = (ushort)orride;
-        //    RecievePet(src, true);
-        //}
-        //public void RecievePet(Npc pet, bool load = false)
-        //{
-        //    if (pet.NpcID == 0) return;
-        //    byte a = 1;
+        /// <summary>
+        /// Build AC 15,8 packet with pet list data
+        /// </summary>
+        public SendPacket GetPetlistData()
+        {
+            if (petlist.Count == 0)
+                return null;
 
-        //    while (petlist.ContainsKey(a)) { a++; }
+            SendPacket p = new SendPacket();
+            p.Pack8(15);
+            p.Pack8(8);
 
-        //    Pet tmp = new Pet(pet);
-        //    //tmp.Owner = host;
-        //    tmp.Groupslot = a;
-        //    petlist.Add(a, tmp);
-        //    if (!load)
-        //    {
-        //        SendPacket pkt = new SendPacket();
-        //        pkt.PackArray(new byte[] { 15, 1 });
-        //        pkt.Pack(host.ID);
-        //        pkt.Pack(pet.NpcID);
-        //        pkt.Pack((byte)2);//testing if level
-        //        pkt.Pack((uint)tmp.TotalExp);
-        //        pkt.Pack((byte)tmp.Skill1.Grade);
-        //        pkt.Pack(tmp.Skill1.Exp);
-        //        pkt.Pack((byte)tmp.Skill2.Grade);
-        //        pkt.Pack(tmp.Skill2.Exp);
-        //        pkt.Pack((byte)tmp.Skill3.Grade);
-        //        pkt.Pack(tmp.Skill3.Exp);
-        //        pkt.Pack((byte)tmp.Amity);
-        //        pkt.Pack16(0);
-        //        pkt.Pack16(0);
-        //        pkt.Pack((byte)0);
-        //        host.Send(pkt);
+            for (byte n = 1; n <= 4; n++)
+            {
+                if (petlist.ContainsKey(n) && petlist[n] != null)
+                {
+                    var pet = petlist[n];
+                    p.Pack8(n);
+                    p.Pack16((ushort)pet.ID);
+                    p.Pack32((uint)pet.TotalExp);
+                    p.Pack8((byte)pet.Level);
+                    p.Pack32((uint)pet.CurHP);
+                    p.Pack16((ushort)pet.CurSP);
+                    p.Pack16(pet.Int);
+                    p.Pack16(pet.Str);
+                    p.Pack16(pet.Con);
+                    p.Pack16(pet.Agi);
+                    p.Pack16(pet.Wis);
+                    p.Pack8(0);
+                    p.Pack8(pet.Amity);
+                    p.Pack16(1);
+                    p.Pack8(0);
+                    // Skill data (placeholder — 3 skills x 2 bytes each)
+                    p.Pack8(0); p.Pack8(0); // skill1 grade + exp
+                    p.Pack8(0); p.Pack8(0); // skill2
+                    p.Pack8(0); p.Pack8(0); // skill3
+                    p.PackArray(pet.FullEqData);
+                    p.Pack16(0);
+                    p.Pack8(0); // reborn
+                    p.Pack8(0); // potential
+                }
+            }
 
-        //        if (BattlePet != null)
-        //            Rest_Pet();
+            return p;
+        }
 
-        //        BattlePet = tmp;
-        //    }
-        //}
-        //public void DismissPet(byte slot)
-        //{
-        //    if (petlist.ContainsKey(slot))
-        //    {
-        //        if (petlist.Remove(slot))
-        //        {
-        //            SendPacket tmp = new SendPacket();
-        //            tmp.PackArray(new byte[] { 15, 2 });
-        //            tmp.Pack(host.ID);
-        //            tmp.Pack((byte)slot);
-        //            host.Send(tmp);
-        //        }
-        //    }
-        //}
-        //public void onPetLeaving(Pet i, byte slot)
-        //{
+        /// <summary>
+        /// Receive/add a new pet from NPC data.
+        /// </summary>
+        public void ReceivePet(PhoneixNpc npcData, bool load = false)
+        {
+            if (npcData.NpcID == 0) return;
 
-        //}
-        //public void Bring_into_Battle(byte slot)
-        //{
-        //    if (petlist.ContainsKey(slot))
-        //    {
-        //        BattlePet = petlist[slot];
-        //        if (host.CurrentMap != null)
-        //        {
-        //            SendPacket tmp = new SendPacket();
-        //            tmp.PackArray(new byte[] { 15, 4 });
-        //            tmp.Pack(host.ID);
-        //            tmp.Pack(BattlePet.ID);
-        //            tmp.Pack((byte)0);
-        //            tmp.Pack((byte)1);
-        //            tmp.PackString(BattlePet.Name);
-        //            tmp.Pack16(0);//weapon
-        //            host.CurrentMap.Broadcast(tmp, host.ID);
-        //        }
-        //    }
-        //}
-        //public void Rest_Pet()
-        //{
-        //    SendPacket tmp = new SendPacket();
-        //    tmp.PackArray(new byte[] { 19, 2 });
-        //    host.Send(tmp);
-        //    tmp = new SendPacket();
-        //    tmp.PackArray(new byte[] { 19, 7 });
-        //    tmp.Pack(host.ID);
-        //    host.CurrentMap.Broadcast(tmp, host.ID);
-        //    BattlePet = null;
-        //}
-        //public void onRidePet(byte slot)
-        //{
-        //    if (petlist.ContainsKey(slot))
-        //    {
-        //        if (BattlePet == petlist[slot])
-        //        {
-        //            SendPacket tmp = new SendPacket();
-        //            tmp = new SendPacket();
-        //            tmp.PackArray(new byte[] { 19, 7 });
-        //            tmp.Pack(host.ID);
-        //            host.CurrentMap.Broadcast(tmp, host.ID); RidePet = BattlePet; BattlePet = null;
-        //        }
-        //        SendPacket f = new SendPacket();
-        //        f.PackArray(new byte[] { 15, 16 });
-        //        f.Pack((byte)(byte)slot);
-        //        f.Pack(host.ID);
-        //        f.Pack(petlist[slot].ID);
-        //        host.CurrentMap.Broadcast(f);
-        //        host.Send8_1();
-        //    }
-        //}
-        //public void onUnRidePet()
-        //{
-        //    if (RidePet != null)
-        //    {
-        //        SendPacket f = new SendPacket();
-        //        f.PackArray(new byte[] { 15, 17 });
-        //        f.Pack(host.ID);
-        //        host.CurrentMap.Broadcast(f);
-        //        host.Send8_1();
-        //        RidePet = null;
-        //    }
-        //}
+            byte slot = 1;
+            while (petlist.ContainsKey(slot) && slot < 20) { slot++; }
+            if (slot >= 20) return;
+
+            Pet pet = new Pet(slot, npcData, host);
+            petlist.Add(slot, pet);
+
+            if (!load)
+            {
+                // Notify client: AC 15,1 (new pet acquired)
+                SendPacket pkt = new SendPacket();
+                pkt.Pack8(15);
+                pkt.Pack8(1);
+                pkt.Pack32(host.CharID);
+                pkt.Pack16((ushort)npcData.NpcID);
+                pkt.Pack8((byte)pet.Level);
+                pkt.Pack32((uint)pet.TotalExp);
+                pkt.Pack8(0); pkt.Pack8(0); // skill1
+                pkt.Pack8(0); pkt.Pack8(0); // skill2
+                pkt.Pack8(0); pkt.Pack8(0); // skill3
+                pkt.Pack8(pet.Amity);
+                pkt.Pack16(0);
+                pkt.Pack16(0);
+                pkt.Pack8(0);
+                host.Send(pkt);
+
+                // Auto-set as battle pet
+                if (BattlePet != null)
+                    RestPet();
+                BattlePet = pet;
+            }
+        }
+
+        /// <summary>
+        /// Receive/add a new pet from raw stat values (for battle capture).
+        /// </summary>
+        public void ReceivePetFromCapture(ushort npcID, string name,
+            ushort str, ushort con, ushort intl, ushort wis, ushort agi, byte element,
+            bool load = false)
+        {
+            if (npcID == 0) return;
+
+            byte slot = 1;
+            while (petlist.ContainsKey(slot) && slot < 20) { slot++; }
+            if (slot >= 20) return;
+
+            Pet pet = new Pet(slot, host, npcID, name, str, con, intl, wis, agi, element);
+            petlist.Add(slot, pet);
+
+            if (!load)
+            {
+                // Notify client: AC 15,1 (new pet acquired)
+                SendPacket pkt = new SendPacket();
+                pkt.Pack8(15);
+                pkt.Pack8(1);
+                pkt.Pack32(host.CharID);
+                pkt.Pack16(npcID);
+                pkt.Pack8((byte)pet.Level);
+                pkt.Pack32((uint)pet.TotalExp);
+                pkt.Pack8(0); pkt.Pack8(0); // skill1
+                pkt.Pack8(0); pkt.Pack8(0); // skill2
+                pkt.Pack8(0); pkt.Pack8(0); // skill3
+                pkt.Pack8(pet.Amity);
+                pkt.Pack16(0);
+                pkt.Pack16(0);
+                pkt.Pack8(0);
+                host.Send(pkt);
+
+                // Auto-set as battle pet
+                if (BattlePet != null)
+                    RestPet();
+                BattlePet = pet;
+            }
+        }
+
+        /// <summary>
+        /// Dismiss/release a pet from the specified slot.
+        /// </summary>
+        public void DismissPet(byte slot)
+        {
+            if (!petlist.ContainsKey(slot)) return;
+
+            if (BattlePet == petlist[slot])
+                RestPet();
+
+            petlist.Remove(slot);
+
+            SendPacket pkt = new SendPacket();
+            pkt.Pack8(15);
+            pkt.Pack8(2);
+            pkt.Pack32(host.CharID);
+            pkt.Pack8(slot);
+            host.Send(pkt);
+        }
+
+        /// <summary>
+        /// Bring a pet into battle mode (visible on map, participates in fights).
+        /// Broadcasts AC 15,4 to map.
+        /// </summary>
+        public void BringIntoBattle(byte slot)
+        {
+            if (!petlist.ContainsKey(slot)) return;
+
+            if (BattlePet != null)
+                RestPet();
+
+            BattlePet = petlist[slot];
+
+            if (host.CurMap != null)
+            {
+                SendPacket pkt = new SendPacket();
+                pkt.Pack8(15);
+                pkt.Pack8(4);
+                pkt.Pack32(host.CharID);
+                pkt.Pack16((ushort)BattlePet.ID);
+                pkt.Pack8(0);
+                pkt.Pack8(1);
+                pkt.PackStringN(BattlePet.Name);
+                pkt.Pack16(0); // weapon
+                host.CurMap.Broadcast(pkt);
+            }
+        }
+
+        /// <summary>
+        /// Rest the current battle pet (remove from battle).
+        /// Sends AC 19,2 to owner and AC 19,7 broadcast to map.
+        /// </summary>
+        public void RestPet()
+        {
+            if (BattlePet == null) return;
+
+            host.Send(Tools.FromFormat("bb", 19, 2));
+
+            if (host.CurMap != null)
+            {
+                SendPacket pkt = new SendPacket();
+                pkt.Pack8(19);
+                pkt.Pack8(7);
+                pkt.Pack32(host.CharID);
+                host.CurMap.Broadcast(pkt, "Ex", host.CharID);
+            }
+
+            m_battlepet = null; // bypass setter to avoid re-sending AC 19,1
+        }
+
+        /// <summary>
+        /// Mount/ride a pet. Broadcasts AC 15,16 to map.
+        /// </summary>
+        public void RidePetAction(byte slot)
+        {
+            if (!petlist.ContainsKey(slot)) return;
+
+            // If the pet is the current battle pet, remove from battle first
+            if (BattlePet == petlist[slot])
+            {
+                if (host.CurMap != null)
+                {
+                    SendPacket dismiss = new SendPacket();
+                    dismiss.Pack8(19);
+                    dismiss.Pack8(7);
+                    dismiss.Pack32(host.CharID);
+                    host.CurMap.Broadcast(dismiss, "Ex", host.CharID);
+                }
+                RidePet = BattlePet;
+                m_battlepet = null;
+            }
+            else
+            {
+                RidePet = petlist[slot];
+            }
+
+            SendPacket pkt = new SendPacket();
+            pkt.Pack8(15);
+            pkt.Pack8(16);
+            pkt.Pack8(slot);
+            pkt.Pack32(host.CharID);
+            pkt.Pack16((ushort)petlist[slot].ID);
+            host.CurMap.Broadcast(pkt);
+            host.Send8_1(false);
+        }
+
+        /// <summary>
+        /// Unmount/unride the current riding pet. Broadcasts AC 15,17.
+        /// </summary>
+        public void UnridePet()
+        {
+            if (RidePet == null) return;
+
+            SendPacket pkt = new SendPacket();
+            pkt.Pack8(15);
+            pkt.Pack8(17);
+            pkt.Pack32(host.CharID);
+
+            if (host.CurMap != null)
+                host.CurMap.Broadcast(pkt);
+
+            host.Send8_1(false);
+            RidePet = null;
+        }
     }
 }

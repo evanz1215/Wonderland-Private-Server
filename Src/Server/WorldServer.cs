@@ -13,6 +13,7 @@ using Game.Maps;
 using Network;
 using Plugin;
 using RCLibrary.Core.Networking;
+using Server.System;
 
 namespace Server
 {
@@ -84,6 +85,22 @@ namespace Server
 
         public void Initialize()
         {
+            FriendManager.GlobalFindPlayer = FindPlayerByCharID;
+            MailManager.GlobalFindPlayer = FindPlayerByCharID;
+            Player.OnPlayerLevelUp = (p, lvl) => GameLogger.LogLevelUp(p, lvl);
+            Player.GetExpMultiplier = () => cGlobal.gWorldEvents.ExpMultiplier;
+            Player.GetQuestTemplate = (questID) => cGlobal.gQuestTemplates.Get(questID);
+            Game.Battle.MobFighter.ResolveSkill = (skillID) =>
+            {
+                if (cGlobal.gSkillManager == null) return null;
+                var sd = cGlobal.gSkillManager.Get_Skill(skillID);
+                if (sd == null) return null;
+                var info = sd.GetData();
+                return Game.Battle.BattleSkill.FromSkillData(
+                    info.SkillID, info.EffectLayer, info.AdditinalHarm,
+                    info.MaxSkillLevel, sd.Grade, info.SkillPattern1,
+                    info.NumberOfTurns, info.UnknownByte7, info.SP);
+            };
             killFlag = false;
             Mainthrd = new Thread(new ThreadStart(MainLoop));
             Mainthrd.Name = "World Manager Main Thread";
@@ -360,6 +377,43 @@ namespace Server
         /// Broadcasts a packet to all
         /// </summary>
         /// <param CharacterName="pkt"></param>
+        public void BroadcastAll(SendPacket pkt)
+        {
+            foreach (var map in MapList.Values)
+                map.Broadcast(pkt);
+        }
+
+        public Player FindPlayerByName(string name)
+        {
+            foreach (var map in MapList.Values)
+            {
+                var player = map.FindPlayerByName(name);
+                if (player != null) return player;
+            }
+            return null;
+        }
+
+        public Player FindPlayerByCharID(uint charID)
+        {
+            foreach (var map in MapList.Values)
+            {
+                var player = map.FindPlayer(charID);
+                if (player != null) return player;
+            }
+            return null;
+        }
+
+        public int OnlineCount
+        {
+            get
+            {
+                int count = 0;
+                foreach (var map in MapList.Values)
+                    count += map.PlayerCount;
+                return count;
+            }
+        }
+
         public void Broadcast(SendPacket pkt)
         {
             //foreach (var p in Players)
@@ -524,7 +578,8 @@ namespace Server
             // //    Send(g);
             src.Send(Tools.FromFormat("bbd", 26, 4, src.Gold));
             src.Send(new SendPacket(src.Settings.ToArray()));
-            //src.MyFriends.SendFriendList();
+            src.Friends.SendFriendList();
+            src.Friends.NotifyFriendsOnline();
 
             // //pets
             // //-----------------------------------   

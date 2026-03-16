@@ -1,394 +1,433 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Wonderland_Private_Server.Code.Objects;
-using Wonderland_Private_Server.Network;
+using Network;
 
-
-namespace Wonderland_Private_Server.Code.Objects
-{//////
-    public class Instance
+namespace Game
+{
+    /// <summary>
+    /// Manages all active instances (dungeon parties) in the game.
+    /// An instance is a group of players who enter a dungeon map together.
+    /// </summary>
+    public class InstanceSystem
     {
-        Dictionary<int, CInstance> InstanceList;
-        Dictionary<int, Data> InstanceData;
+        readonly object m_lock = new object();
+        Dictionary<int, DungeonInstance> m_instances;
+        Dictionary<int, InstanceData> m_data;
+
         int Tabs
         {
             get
             {
-                if (InstanceList.Count <= 5) return 1;
-                else if ((InstanceList.Count > 5) && (InstanceList.Count <= 10)) return 2;
-                else if ((InstanceList.Count > 10) && (InstanceList.Count <= 15)) return 3;
-                else if ((InstanceList.Count > 15) && (InstanceList.Count <= 20)) return 4;
-                else return 1;
+                int count = m_instances.Count;
+                if (count <= 5) return 1;
+                if (count <= 10) return 2;
+                if (count <= 15) return 3;
+                if (count <= 20) return 4;
+                return 1;
             }
         }
 
-        public Instance()
+        public InstanceSystem()
         {
-            InstanceList = new Dictionary<int, CInstance>();
-            InstanceData = new Dictionary<int, Data>();
+            m_instances = new Dictionary<int, DungeonInstance>();
+            m_data = new Dictionary<int, InstanceData>();
             LoadData();
         }
+
         void LoadData()
         {
-            Data d = new Data();
-            d.IDGlobal = 61591;
-            d.LevelRestrict = 10;
-            d.Timer = 15;
-            d.NumberPlayers = 6;
-            d.Name = "yoyo family";
-            InstanceData.Add(30012, d);
+            // Hardcoded dungeon definitions — will be loaded from DB/files later
+            m_data[30012] = new InstanceData
+            {
+                IDGlobal = 61591,
+                Name = "Yoyo Family",
+                MaxPlayers = 6,
+                LevelRestrict = 10,
+                Timer = 15
+            };
 
+            m_data[30013] = new InstanceData
+            {
+                IDGlobal = 61592,
+                Name = "Slime Cave",
+                MaxPlayers = 4,
+                LevelRestrict = 20,
+                Timer = 20
+            };
+
+            m_data[30014] = new InstanceData
+            {
+                IDGlobal = 61593,
+                Name = "Dark Forest",
+                MaxPlayers = 6,
+                LevelRestrict = 30,
+                Timer = 30
+            };
         }
 
-
-        public int GetIndexTab(int a)
-        {            
-                    if (a <= 5) return 1;
-                    else if ((a > 5) && (a <= 10)) return 2;
-                    else if ((a > 10) && (a <= 15)) return 3;
-                    else if ((a > 15) && (a <= 20)) return 4;
-                    else return 5;         
-        }
-        int GetTab(int CurTab)
+        int GetTabForIndex(int count)
         {
-            if (CurTab == 1)
-                return 0;
-            else if (CurTab == 2)
-                return 5;
-            else if (CurTab == 3)
-                return 10;
-            else if (CurTab == 4)
-                return 15;
-            else
-                return 20;
-
+            if (count <= 5) return 1;
+            if (count <= 10) return 2;
+            if (count <= 15) return 3;
+            if (count <= 20) return 4;
+            return 5;
         }
-        public int GetNumberPerTab(int Tab,int number)
+
+        int GetTabSkip(int tab)
         {
-            switch(Tab)
-            {
-                case 1: if (number > 5) { return 5; } else { return number; } break;
-                case 2: if (number > 10) { return 5; } else { return number - 5; } break;
-                case 3: if (number > 15) { return 5; } else { return number - 10; } break;
-                case 4: if (number > 20) { return 5; } else { return number - 20; } break;           
-
-            }
-            return 1;// error
-        }
-            
-        
-        int VerifyExitInstanceInList(int id)
-        {            
-            var g = InstanceData[id];
-            int tmp = g.IDGlobal;
-            if (InstanceList.ContainsKey(tmp))
-            {
-            gg:
-                tmp++;
-                if (InstanceList.ContainsKey(tmp))
-                {
-                    goto gg;
-                }
-                else { return tmp; }
-            }
-            else
-            {
-                return tmp;
-            }
+            return (tab - 1) * 5;
         }
 
-        public void CreaterInstance(ref Player src,int Id,string text)
+        int GetNumberPerTab(int tab, int total)
         {
-            
-            CInstance ci = new CInstance();
-            ci.ID = VerifyExitInstanceInList(Id);
-            ci.Text = text;
-            ci.Creater = src.UserID;
-            ci.NameCreater = src.CharacterName;
-            ci.ListPlayers.Add(src.UserID,src);
-
-            InstanceList.Add(ci.ID, ci);
-
-            src.CurInstance = ci.ID;
-
-            
-            SendPacket s = new SendPacket();
-            s.Pack(new byte[]{85,8});
-            int tab = GetIndexTab(InstanceList.Count);
-            s.Pack((byte)tab);
-            s.Pack((UInt16)ci.ID); // ID INSTANCIA
-            s.Pack(src.CharacterName); // CHAR NAME
-            s.Pack(ci.Text); // DESCRITION INSTANCE
-            s.Pack(1);
-            s.Pack(0); // count + NAME GUILD
-            cGlobal.WLO_World.BroadcastTo(s); // SendPacket global
-
-           s = new SendPacket();
-            s.Pack(new byte[] { 85,5,1,1 });
-            s.Pack((UInt16)ci.ID);
-            s.Pack(1);
-            s.Pack(ci.Text);
-            s.Pack(src.UserID);            
-            cGlobal.WLO_World.BroadcastTo(s, directTo : src.UserID);
-           
-
-            SendPacket sc = new SendPacket();
-            sc.Pack(new byte[] { 85,2,0});            
-            cGlobal.WLO_World.BroadcastTo(sc, directTo: src.UserID);
-            
-            
+            int start = (tab - 1) * 5;
+            int remaining = total - start;
+            return Math.Min(remaining, 5);
         }
-        public void CheckMembers(ref Player src,byte Tab)
-        {           
-            //int skip = 0;
 
-            if (InstanceList.ContainsKey(src.CurInstance))
+        int AllocateInstanceID(int dataID)
+        {
+            if (!m_data.ContainsKey(dataID)) return -1;
+            int id = m_data[dataID].IDGlobal;
+            while (m_instances.ContainsKey(id)) id++;
+            return id;
+        }
+
+        /// <summary>
+        /// Create a new instance party.
+        /// </summary>
+        public void CreateInstance(Player src, int dataID, string text)
+        {
+            lock (m_lock)
             {
+                int id = AllocateInstanceID(dataID);
+                if (id < 0) return;
+
+                var inst = new DungeonInstance();
+                inst.ID = id;
+                inst.Text = text;
+                inst.CreatorID = src.CharID;
+                inst.CreatorName = src.CharName;
+                inst.DataID = dataID;
+                inst.Members[src.CharID] = src;
+
+                m_instances[id] = inst;
+                src.CurInstance = id;
+
+                // AC 85,8 — broadcast new instance to all members' maps
                 SendPacket s = new SendPacket();
-                s.Pack(new byte[] {85,6});
-                s.Pack((byte)InstanceList[src.CurInstance].Tabs);//total Tabs
-                s.Pack(Tab); // current tab                           
-                s.Pack((byte)InstanceList[src.CurInstance].ListPlayers.Count);//TotalPlayers
-                int tmp = GetNumberPerTab(Tab,InstanceList[src.CurInstance].ListPlayers.Count);
-                s.Pack((byte)tmp); // number player per tab 5 max                
+                s.PackArray(new byte[] { 85, 8 });
+                s.Pack8((byte)GetTabForIndex(m_instances.Count));
+                s.Pack16((ushort)id);
+                s.PackStringN(src.CharName);
+                s.PackStringN(text);
+                s.Pack32(1);
+                s.Pack32(0);
+                // Send to creator only (no global broadcast in new system)
+                src.Send(s);
 
-                //if (Tab == 1)
-                //    skip = 0;
-                //else if (Tab == 2)
-                //    skip = 5;
-                //else if (Tab == 3)
-                //    skip = 10;
-                //else if (Tab == 4)
-                //    skip = 15;
-                //else
-                //    skip = 20;
+                // AC 85,5 — instance join confirmation to creator
+                s = new SendPacket();
+                s.PackArray(new byte[] { 85, 5, 1, 1 });
+                s.Pack16((ushort)id);
+                s.Pack8(1);
+                s.PackStringN(text);
+                s.Pack32(src.CharID);
+                src.Send(s);
 
-
-                    var item = InstanceList[src.CurInstance].ListPlayers.Skip(GetTab(Tab)).Take(5).ToList();
-                    for (int a = 0; a < item.Count; a++)
-                    {
-                        s.Pack(item[a].Value.UserID);
-                    }
-               
+                // AC 85,2 — close instance list UI
+                s = new SendPacket();
+                s.PackArray(new byte[] { 85, 2, 0 });
                 src.Send(s);
             }
         }
-        
-        public void Send81_1(ref Player src,int TabResquest) // UPDATE LIST INSTANCE !!!
+
+        /// <summary>
+        /// Send list of active instances to player (paginated by tab).
+        /// </summary>
+        public void SendInstanceList(Player src, int tab)
         {
-            SendPacket s = new SendPacket();
-            s.Pack(new byte[] { 85,1});
-            s.Pack((byte)Tabs); // total Tabs
-            s.Pack((byte)TabResquest); // Tab request (current tab)
-           
-            if (InstanceList.Count > 0)
+            lock (m_lock)
             {
-                s.Pack((byte)InstanceList.Count);//total instances
+                SendPacket s = new SendPacket();
+                s.PackArray(new byte[] { 85, 1 });
+                s.Pack8((byte)Tabs);
+                s.Pack8((byte)tab);
 
-                var item = InstanceList.Skip(GetTab(TabResquest)).Take(5).ToList();
-
-                for (int a = 0; a < item.Count; a++)
+                if (m_instances.Count > 0)
                 {
-                    s.Pack((UInt16)item[a].Value.ID);
-                    s.Pack(item[a].Value.NameCreater);
-                    s.Pack(item[a].Value.Text);
-                    s.Pack(1);
-                    s.Pack(0);
-                }
-                //foreach (var pair in InstanceList.Take(5))
-                //{
-                //    s.Pack((UInt16)pair.Value.ID);
-                //    s.Pack(pair.Value.NameCreater);
-                //    s.Pack(pair.Value.Text);
-                //    s.Pack(1);
-                //    s.Pack(0);
-                //}                
-            }
-            else {s.Pack(0); }
-            src.Send(s);
+                    var page = m_instances.Skip(GetTabSkip(tab)).Take(5).ToList();
+                    s.Pack8((byte)page.Count);
 
-            s = new SendPacket();
-            s.Pack(new byte[] { 85,13,0,0});           
-            src.Send(s);
+                    foreach (var kvp in page)
+                    {
+                        s.Pack16((ushort)kvp.Value.ID);
+                        s.PackStringN(kvp.Value.CreatorName);
+                        s.PackStringN(kvp.Value.Text);
+                        s.Pack32(1);
+                        s.Pack32(0);
+                    }
+                }
+                else
+                {
+                    s.Pack8(0);
+                }
+                src.Send(s);
+
+                s = new SendPacket();
+                s.PackArray(new byte[] { 85, 13, 0, 0 });
+                src.Send(s);
+            }
         }
 
-        public void ExitInstancia(ref Player src)
+        /// <summary>
+        /// Preview instance members before joining.
+        /// </summary>
+        public void PreJoin(Player src, int instanceID)
         {
-            int CurInstantance = src.CurInstance;
-            uint srcID = src.UserID;
-
-            if (InstanceList.ContainsKey(CurInstantance))
+            lock (m_lock)
             {
-                //check here if exist + members
-                int check = InstanceList[CurInstantance].ListPlayers.Count - 1;
-                if (check <= 0){ check = 0;}
+                if (!m_instances.ContainsKey(instanceID)) return;
+                var inst = m_instances[instanceID];
 
                 SendPacket s = new SendPacket();
-                s.Pack(new byte[] { 85, 12 });
-                s.Pack((byte)check); // numero de pessoas que ficaram
-                s.Pack(srcID); // id de quem saiu
-                s.Pack((UInt16)CurInstantance);
-                if (InstanceList[CurInstantance].Creater == srcID)
-                {
-                    InstanceList[CurInstantance].Creater = 0;
-                    s.Pack(1);
-                }// 0 membro // 1 criador 
-  
-                else s.Pack(0); // 0 membro // 1 criador
+                s.PackArray(new byte[] { 85, 4 });
+                s.Pack16((ushort)inst.ID);
+                s.Pack8((byte)inst.Members.Count);
 
-                cGlobal.WLO_World.BroadcastTo(s); //global packet
-
-                
-                if (check == 0) // remove instance not players
+                foreach (var pair in inst.Members)
                 {
-                    InstanceList.Remove(CurInstantance);
+                    s.PackStringN(pair.Value.CharName);
+                    s.Pack32(pair.Value.CharID);
+                }
+                src.Send(s);
+            }
+        }
+
+        /// <summary>
+        /// Join an existing instance.
+        /// </summary>
+        public void JoinInstance(Player src, int instanceID)
+        {
+            lock (m_lock)
+            {
+                if (!m_instances.ContainsKey(instanceID)) return;
+                var inst = m_instances[instanceID];
+
+                // Check capacity
+                if (m_data.ContainsKey(inst.DataID) && inst.Members.Count >= m_data[inst.DataID].MaxPlayers)
+                    return;
+
+                // Check level requirement
+                if (m_data.ContainsKey(inst.DataID) && src.Level < m_data[inst.DataID].LevelRestrict)
+                    return;
+
+                // AC 85,7 — notify existing members
+                SendPacket s = new SendPacket();
+                s.PackArray(new byte[] { 85, 7 });
+                s.Pack32(1);
+                s.Pack8((byte)(inst.Members.Count + 1));
+                s.Pack32(src.CharID);
+                s.Pack16((ushort)inst.ID);
+                BroadcastToInstance(inst, s);
+
+                inst.Members[src.CharID] = src;
+                src.CurInstance = inst.ID;
+
+                // AC 85,5 — join confirmation to new member
+                s = new SendPacket();
+                s.PackArray(new byte[] { 85, 5 });
+                s.Pack8(1);
+                s.Pack8(1);
+                s.Pack16((ushort)inst.ID);
+                s.Pack8((byte)inst.Members.Count);
+                s.PackStringN(inst.Text);
+                s.Pack32(inst.CreatorID);
+                src.Send(s);
+
+                // AC 85,3 — close UI
+                s = new SendPacket();
+                s.PackArray(new byte[] { 85, 3, 0 });
+                src.Send(s);
+            }
+        }
+
+        /// <summary>
+        /// Exit current instance.
+        /// </summary>
+        public void ExitInstance(Player src)
+        {
+            lock (m_lock)
+            {
+                int instID = src.CurInstance;
+                if (!m_instances.ContainsKey(instID)) return;
+
+                var inst = m_instances[instID];
+                int remaining = inst.Members.Count - 1;
+                if (remaining < 0) remaining = 0;
+
+                // AC 85,12 — notify all that someone left
+                SendPacket s = new SendPacket();
+                s.PackArray(new byte[] { 85, 12 });
+                s.Pack8((byte)remaining);
+                s.Pack32(src.CharID);
+                s.Pack16((ushort)instID);
+                s.Pack8((inst.CreatorID == src.CharID) ? (byte)1 : (byte)0);
+                BroadcastToInstance(inst, s);
+
+                // Remove player
+                inst.RemoveMember(src.CharID);
+
+                if (remaining == 0)
+                {
+                    // Remove empty instance
+                    m_instances.Remove(instID);
 
                     s = new SendPacket();
-                    s.Pack(new byte[] { 85, 11, 2 });
-                    s.Pack((UInt16)CurInstantance);
-                    cGlobal.WLO_World.BroadcastTo(s); //global packet                    
+                    s.PackArray(new byte[] { 85, 11, 2 });
+                    s.Pack16((ushort)instID);
+                    // No global broadcast — instance is gone
                 }
-               
 
+                // AC 85,5,2 — confirm exit to player
                 s = new SendPacket();
-                s.Pack(new byte[] { 85, 5, 2 });
+                s.PackArray(new byte[] { 85, 5, 2 });
                 src.Send(s);
             }
-            // se existe a instancia então remova o player e deixe os outros.
-            if (InstanceList.ContainsKey(CurInstantance))
-            {
-                InstanceList[CurInstantance].RemoveMember(src.UserID);
-            }
-            //src.CurInstance = 0;
-
         }
-        public void PreJoin(uint src,int id)
+
+        /// <summary>
+        /// Check member list of current instance (paginated).
+        /// </summary>
+        public void CheckMembers(Player src, byte tab)
         {
-            if (InstanceList.ContainsKey(id))
+            lock (m_lock)
             {
-                var tmp = InstanceList[id];
+                if (src.CurInstance == 0) return;
+                if (!m_instances.ContainsKey(src.CurInstance)) return;
+
+                var inst = m_instances[src.CurInstance];
+                int total = inst.Members.Count;
+                int perTab = GetNumberPerTab(tab, total);
 
                 SendPacket s = new SendPacket();
-                s.Pack(new byte[] {85,4});
-                s.Pack((UInt16)tmp.ID);
-                s.Pack((byte)tmp.ListPlayers.Count);
-                foreach (var pair in tmp.ListPlayers)
+                s.PackArray(new byte[] { 85, 6 });
+                s.Pack8((byte)inst.Tabs);
+                s.Pack8(tab);
+                s.Pack8((byte)total);
+                s.Pack8((byte)perTab);
+
+                var page = inst.Members.Skip(GetTabSkip(tab)).Take(5).ToList();
+                foreach (var pair in page)
                 {
-                    s.Pack(pair.Value.CharacterName);
-                    s.Pack(pair.Value.UserID);
+                    s.Pack32(pair.Value.CharID);
                 }
-                cGlobal.WLO_World.BroadcastTo(s, directTo: src);
-
+                src.Send(s);
             }
-
-        }
-        public void Join(ref Player src,int id)
-        {
-            var tmp = InstanceList[id];
-
-            SendPacket s = new SendPacket();
-            s.Pack(new byte[] { 85,7});            
-            s.Pack(1); // teste
-            s.Pack((byte)(tmp.CountPlayer + 1)); // new player count
-            s.Pack(src.UserID);
-            s.Pack((UInt16)tmp.ID);
-            cGlobal.WLO_World.BroadcastTo(s); // here global packet
-
-            InstanceList[tmp.ID].ListPlayers.Add(src.UserID,src); //add player
-            src.CurInstance = tmp.ID; // add id instance to player.
-
-            s = new SendPacket();
-            s.Pack(new byte[]{85, 5});
-            s.Pack(1);//test
-            s.Pack(1);//test
-            s.Pack((UInt16)tmp.ID);
-            s.Pack((byte)tmp.CountPlayer);
-            s.Pack(tmp.Text); // text = null = 0;
-            s.Pack(tmp.Creater); // id creater instancia
-            cGlobal.WLO_World.BroadcastTo(s, directTo: src.UserID);
-
-            s = new SendPacket();
-            s.Pack(new byte[] { 85,3,0 });
-            src.Send(s);
-
         }
 
-        //Demiss player
-        public void Demiss(ref Player src,uint member)
+        /// <summary>
+        /// Dismiss a member from the instance (creator only).
+        /// </summary>
+        public void DismissMember(Player src, uint memberID)
         {
-            int CurInstance = src.CurInstance;
-            if (InstanceList.ContainsKey(CurInstance))
+            lock (m_lock)
             {
-                InstanceList[CurInstance].RemoveMember(member);
+                if (src.CurInstance == 0) return;
+                if (!m_instances.ContainsKey(src.CurInstance)) return;
+
+                var inst = m_instances[src.CurInstance];
+                if (inst.CreatorID != src.CharID) return; // only creator can dismiss
+
+                if (!inst.Members.ContainsKey(memberID)) return;
+
+                Player target = inst.Members[memberID];
+                inst.RemoveMember(memberID);
+
+                // AC 85,12 — notify remaining members
                 SendPacket s = new SendPacket();
-                s.Pack(new byte[] { 85, 12 });
-                s.Pack((byte)(InstanceList[CurInstance].CountPlayer - 1)); // numero de pessoas que ficaram
-                s.Pack(member); // id de quem saiu
-                s.Pack((UInt16)CurInstance);
-                s.Pack(0); // 0 membro // 1 criador
-                cGlobal.WLO_World.BroadcastTo(s); //global packet
+                s.PackArray(new byte[] { 85, 12 });
+                s.Pack8((byte)inst.Members.Count);
+                s.Pack32(memberID);
+                s.Pack16((ushort)src.CurInstance);
+                s.Pack8(0); // 0 = member, 1 = creator
+                BroadcastToInstance(inst, s);
 
+                // AC 85,5,4 — notify dismissed player
                 s = new SendPacket();
-                s.Pack(new byte[] { 85,5,4 });
-                cGlobal.WLO_World.BroadcastTo(s, directTo: member);
-            }         
-
-        }
-    } 
-
-    class CInstance
-    {        
-        public string Text; // descrição
-        public uint Creater; // ID Quem criou
-        public string NameCreater; // nome de quem criou
-        public  int TimerElapsed; // tempo decorrido
-        public int ID; // id desta instancia Key dictionary
-        public int CountPlayer
-        {
-            get
-            {
-                if (ListPlayers.Count != null) return ListPlayers.Count;
-                else return 0;
-
+                s.PackArray(new byte[] { 85, 5, 4 });
+                target.Send(s);
             }
         }
+
+        /// <summary>
+        /// Get instance data by data ID (for scene integration).
+        /// </summary>
+        public InstanceData GetData(int dataID)
+        {
+            if (m_data.ContainsKey(dataID))
+                return m_data[dataID];
+            return null;
+        }
+
+        void BroadcastToInstance(DungeonInstance inst, SendPacket pkt)
+        {
+            foreach (var pair in inst.Members)
+            {
+                pair.Value.Send(pkt);
+            }
+        }
+    }
+
+    /// <summary>
+    /// A single active dungeon instance (party).
+    /// </summary>
+    class DungeonInstance
+    {
+        public int ID;
+        public int DataID;
+        public string Text;
+        public uint CreatorID;
+        public string CreatorName;
+        public int TimerElapsed;
+        public Dictionary<uint, Player> Members = new Dictionary<uint, Player>();
+
         public int Tabs
         {
             get
             {
-                if (CountPlayer <= 5) return 1;
-                 else if((CountPlayer > 5)&&(CountPlayer <=10)) return 2;
-                 else if ((CountPlayer > 10)&&(CountPlayer <=15)) return 3;
-                 else if ((CountPlayer > 15)&&(CountPlayer <=20)) return 4;
-                else return 1;
+                int count = Members.Count;
+                if (count <= 5) return 1;
+                if (count <= 10) return 2;
+                if (count <= 15) return 3;
+                if (count <= 20) return 4;
+                return 1;
             }
         }
-        public Dictionary<uint,Player> ListPlayers = new Dictionary<uint,Player>();
 
-        public void RemoveMember(uint ID)
+        public void RemoveMember(uint charID)
         {
-            if (ListPlayers.ContainsKey(ID))
+            if (Members.ContainsKey(charID))
             {
-                ListPlayers[ID].CurInstance = 0;
-                ListPlayers.Remove(ID);
+                Members[charID].CurInstance = 0;
+                Members.Remove(charID);
             }
-            //var item = ListPlayers.Find(x => x.UserID == ID);
-            //if (item != null)            
-            //    ListPlayers.Remove(item);
         }
-        
     }
-    class Data
+
+    /// <summary>
+    /// Static data for a dungeon type (loaded from config/DB).
+    /// </summary>
+    public class InstanceData
     {
-        //public ushort IDIndex;
         public int IDGlobal;
         public string Name;
-        public int NumberPlayers;
+        public int MaxPlayers;
         public int Timer;
         public byte LevelRestrict;
-        /// quests
     }
 }

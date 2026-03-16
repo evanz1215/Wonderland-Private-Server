@@ -1,142 +1,149 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Wonderland_Private_Server.Network;
-using Wonderland_Private_Server.Code.Objects;
-using Wonderland_Private_Server.Code.Enums;
-using Wlo.Core;
+using Game;
+using Network;
 
-namespace Wonderland_Private_Server.ActionCodes
-{///////
-    public class AC85 : AC
+namespace Network.ActionCodes
+{
+    /// <summary>
+    /// AC 85 — Instance / Dungeon Party System
+    /// Sub 1: Update instance list
+    /// Sub 2: Tab instance list
+    /// Sub 3: Create instance
+    /// Sub 4: Pre-join (preview members)
+    /// Sub 5: Join instance
+    /// Sub 6: Exit instance
+    /// Sub 10: Check members
+    /// Sub 11: Check members (tab)
+    /// Sub 13: Dismiss member
+    /// </summary>
+    public class AC85_Instance : AC
     {
+        /// <summary>
+        /// Static reference to the global InstanceSystem.
+        /// Set during WorldServer.Initialize().
+        /// </summary>
+        public static InstanceSystem Instances;
+
         public override int ID { get { return 85; } }
-        public override void ProcessPkt(ref Player r, RecvPacket p)
+
+        public override void ProcessPkt(Player c, RecievePacket p)
         {
+            if (Instances == null) return;
+
             switch (p.B)
             {
-                case 1: Recv1(ref r, p); break; // Update list instances.
-                case 2: Recv2(ref r, p); break; // Tab list instances.
-                case 3: Recv3(ref r, p); break; // create instance
-                case 4: Recv4(ref r, p); break; // pre join
-                case 5: Recv5(ref r, p); break; // join
-                case 6: Recv6(ref r, p); break; // exit instance.
-                case 10: Recv10(ref r, p); break;//chek members
-                case 11: Recv11(ref r, p); break;//chek membersTabs
-                case 13: Recv13(ref r, p); break;//demiss member
-                default: Utilities.LogServices.Log("AC " + p.A + "," + p.B + " has not been coded"); break;
+                case 1: Recv_UpdateList(c, p); break;
+                case 2: Recv_TabList(c, p); break;
+                case 3: Recv_Create(c, p); break;
+                case 4: Recv_PreJoin(c, p); break;
+                case 5: Recv_Join(c, p); break;
+                case 6: Recv_Exit(c, p); break;
+                case 10: Recv_CheckMembers(c, p); break;
+                case 11: Recv_CheckMembersTab(c, p); break;
+                case 13: Recv_Dismiss(c, p); break;
+                default: DebugSystem.Write("AC 85," + p.B + " has not been coded"); break;
             }
         }
-        void Recv1(ref Player p, RecvPacket r)
-        {
-            try
-            {
-                cGlobal.gInstanceSystem.Send81_1(ref p, 1);
 
-            }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
-        }
-        void Recv2(ref Player p, RecvPacket r)
+        /// <summary>
+        /// Update/refresh instance list (default tab 1).
+        /// Packet: [85][1]
+        /// </summary>
+        void Recv_UpdateList(Player r, RecievePacket p)
         {
-            int tmp = r.Unpack8();
-            try
-            {
-                switch (tmp)
-                {
-
-                    case 1:
-                        cGlobal.gInstanceSystem.Send81_1(ref p, tmp);
-                        break;
-                    case 2:
-                        cGlobal.gInstanceSystem.Send81_1(ref p, tmp);
-                        break;
-                }
-
-            }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
+            Instances.SendInstanceList(r, 1);
         }
-        void Recv3(ref Player p, RecvPacket r)
+
+        /// <summary>
+        /// Switch tab in instance list.
+        /// Packet: [85][2][tab:byte]
+        /// </summary>
+        void Recv_TabList(Player r, RecievePacket p)
         {
-           // int cc = r.Unpack8(4);
-            //string tt = "";
-            //string str = r.UnpackNChar(5);
-            //int tmp = r.Unpack16(2);
-            //try
-            //{
-            //    //if (cc > 0)
-            //    //{
-            //    //    tt = r.Data.Skip(5).Take(cc).ToString();
-            //    //}
-            //    cGlobal.gInstanceSystem.CreaterInstance(ref p, tmp, str);
+            p.SetPtr(6);
+            byte tab = p.Unpack8();
+            if (tab < 1 || tab > 4) tab = 1;
+            Instances.SendInstanceList(r, tab);
+        }
 
-            //}
-            //catch (Exception t) { Utilities.LogServices.Log(t); }
-        }
-        void Recv4(ref Player p, RecvPacket r)
+        /// <summary>
+        /// Create a new instance.
+        /// Packet: [85][3][dataID:ushort][text:stringN]
+        /// </summary>
+        void Recv_Create(Player r, RecievePacket p)
         {
-            int tmp = r.Unpack16(); // get id instance selected
-            try
-            {
-                cGlobal.gInstanceSystem.PreJoin(p.UserID, tmp);
+            p.SetPtr(6);
+            ushort dataID = p.Unpack16();
+            string text = p.UnpackStringN();
+            Instances.CreateInstance(r, dataID, text);
+        }
 
-            }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
-        }
-        void Recv5(ref Player p, RecvPacket r)
+        /// <summary>
+        /// Preview instance members before joining.
+        /// Packet: [85][4][instanceID:ushort]
+        /// </summary>
+        void Recv_PreJoin(Player r, RecievePacket p)
         {
-            int tmp = r.Unpack16(); // get id instance selected
-            try
-            {
-                cGlobal.gInstanceSystem.Join(ref p, tmp);
+            p.SetPtr(6);
+            ushort instanceID = p.Unpack16();
+            Instances.PreJoin(r, instanceID);
+        }
 
-            }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
-        }
-        void Recv6(ref Player p, RecvPacket r)
-        {            
-            
-            try
-            {
-                cGlobal.gInstanceSystem.ExitInstancia(ref p);
-            }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
-        }
-        void Recv10(ref Player p, RecvPacket r)
+        /// <summary>
+        /// Join an existing instance.
+        /// Packet: [85][5][instanceID:ushort]
+        /// </summary>
+        void Recv_Join(Player r, RecievePacket p)
         {
-            try
-            {
-                if(p.CurInstance != 0 )
-                    cGlobal.gInstanceSystem.CheckMembers(ref p, 1);
+            p.SetPtr(6);
+            ushort instanceID = p.Unpack16();
+            Instances.JoinInstance(r, instanceID);
+        }
 
-            }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
-        }
-        void Recv11(ref Player p, RecvPacket r)
+        /// <summary>
+        /// Exit current instance.
+        /// Packet: [85][6]
+        /// </summary>
+        void Recv_Exit(Player r, RecievePacket p)
         {
-            byte tmp = r.Unpack8();
-            try
-            {
-                // move tab members
-                if (p.CurInstance != 0)
-                {
-                    if ((tmp >= 1) && (tmp < 4))
-                    {
-                        cGlobal.gInstanceSystem.CheckMembers(ref p, tmp);
+            Instances.ExitInstance(r);
+        }
 
-                    }
-                }
-            } 
-            catch (Exception t) { Utilities.LogServices.Log(t); }
-        }
-        void Recv13(ref Player p, RecvPacket r)
+        /// <summary>
+        /// Check member list (default tab 1).
+        /// Packet: [85][10]
+        /// </summary>
+        void Recv_CheckMembers(Player r, RecievePacket p)
         {
-            try
-            {                
-                
-            }
-            catch (Exception t) { Utilities.LogServices.Log(t); }
+            if (r.CurInstance != 0)
+                Instances.CheckMembers(r, 1);
+        }
+
+        /// <summary>
+        /// Check member list with tab.
+        /// Packet: [85][11][tab:byte]
+        /// </summary>
+        void Recv_CheckMembersTab(Player r, RecievePacket p)
+        {
+            p.SetPtr(6);
+            byte tab = p.Unpack8();
+            if (r.CurInstance != 0 && tab >= 1 && tab <= 4)
+                Instances.CheckMembers(r, tab);
+        }
+
+        /// <summary>
+        /// Dismiss a member (creator only).
+        /// Packet: [85][13][memberCharID:uint]
+        /// </summary>
+        void Recv_Dismiss(Player r, RecievePacket p)
+        {
+            p.SetPtr(6);
+            uint memberID = p.Unpack32();
+            Instances.DismissMember(r, memberID);
         }
     }
 }

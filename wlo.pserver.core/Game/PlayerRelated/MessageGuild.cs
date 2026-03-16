@@ -1,14 +1,14 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Wonderland_Private_Server.Code.Objects
+namespace Game.Code
 {
     public class MessageGuild
-    {        
-        public string Sender;        
+    {
+        public string Sender;
         public uint UserID;
         public string Subject;
         public string Content;
@@ -17,6 +17,5 @@ namespace Wonderland_Private_Server.Code.Objects
         public UInt16 data3;
         public UInt16 data4;
         public int unknow;
-
     }
 }

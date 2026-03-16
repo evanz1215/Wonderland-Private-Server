@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>wlo.pserver.core</RootNamespace>
     <AssemblyName>wlo.pserver.core</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
@@ -35,12 +35,11 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="log4net">
-      <HintPath>..\packages\log4net.2.0.3\lib\net40-full\log4net.dll</HintPath>
+    <Reference Include="log4net, Version=2.0.9.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
+      <HintPath>..\packages\log4net.2.0.10\lib\net45\log4net.dll</HintPath>
     </Reference>
-    <Reference Include="MySql.Data, Version=6.9.7.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\MySql.Data.6.9.7\lib\net45\MySql.Data.dll</HintPath>
+    <Reference Include="MySql.Data, Version=6.9.12.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL">
+      <HintPath>..\packages\MySql.Data.6.9.12\lib\net45\MySql.Data.dll</HintPath>
     </Reference>
     <Reference Include="PhoenixData, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -51,7 +50,9 @@
       <HintPath>..\DLLS\RCLibrary.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -70,6 +71,12 @@
     <Compile Include="Game\Battle\BattleScene.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Game\Battle\BattleSkill.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Game\Battle\MobFighter.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Game\Bots\Cupid.cs" />
     <Compile Include="Game\Bots\GmBot.cs" />
     <Compile Include="Game\Delegates.cs" />
@@ -80,6 +87,8 @@
     <Compile Include="Game\Enums\MapEnums.cs" />
     <Compile Include="Game\Enums\NpcEnums.cs" />
     <Compile Include="Game\Enums\PetEnums.cs" />
+    <Compile Include="Game\PetRelated\Pet.cs" />
+    <Compile Include="Game\PetRelated\Equip.cs" />
     <Compile Include="Game\Enums\PlayerEnums.cs" />
     <Compile Include="Game\Enums\SkillEnums.cs" />
     <Compile Include="Game\Enums\SocketEnum.cs" />
@@ -101,6 +110,15 @@
     <Compile Include="Game\Maps\WarpDest.cs" />
     <Compile Include="Game\Maps\WarpPortal.cs" />
     <Compile Include="Game\Player.cs" />
+    <Compile Include="Game\PlayerRelated\Quest.cs" />
+    <Compile Include="Game\PlayerRelated\Team.cs" />
+    <Compile Include="Game\PlayerRelated\Trade.cs" />
+    <Compile Include="Game\PlayerRelated\Friends.cs" />
+    <Compile Include="Game\PlayerRelated\Mail.cs" />
+    <Compile Include="Game\PlayerRelated\Guild.cs" />
+    <Compile Include="Game\PlayerRelated\MessageGuild.cs" />
+    <Compile Include="Game\Maps\guildmember.cs" />
+    <Compile Include="Game\Objects\Instance.cs" />
     <Compile Include="Game\PlayerRelated\Character.cs" />
     <Compile Include="Game\PlayerRelated\Equip.cs" />
     <Compile Include="Game\PlayerRelated\inGameSettings.cs" />
@@ -128,10 +146,11 @@
     <Folder Include="Game\Quests\" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
+    <WCFMetadata Include="Service References\" />
   </ItemGroup>
   <ItemGroup>
-    <WCFMetadata Include="Service References\" />
+    <None Include="app.config" />
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />

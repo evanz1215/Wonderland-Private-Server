@@ -87,9 +87,10 @@ namespace DataBase
         {
             DataRow[] rows = new DataRow[0];
 
-            var src = GetDataTable("SELECT * FROM " + TableName + " WHERE " + Username_Ref + " = @id", new DbParam("@id", user));
+            var src = GetDataTable("SELECT * FROM `" + TableName + "` WHERE " + Username_Ref + " = '" + user.Replace("'", "") + "'");
 
-            if (src.Rows.Count > 0)
+            DebugSystem.Write("GetUserData: user='" + user + "' src=" + (src == null ? "null" : "rows=" + src.Rows.Count) + " passType=" + PassVerification);
+            if (src != null && src.Rows.Count > 0)
             {
                 rows = new DataRow[src.Rows.Count];
                 src.Rows.CopyTo(rows, 0);
@@ -97,6 +98,7 @@ namespace DataBase
                 switch (PassVerification)
                 {
                     case VerifyPassType.None:
+                        DebugSystem.Write("VerifyPass: input='" + pass + "' db='" + rows[0][Password_Ref].ToString() + "' result=" + VerifyPassword(pass, rows[0][Password_Ref].ToString()));
                          if (VerifyPassword(pass, rows[0][Password_Ref].ToString()))
                         {
                             string ch = "";

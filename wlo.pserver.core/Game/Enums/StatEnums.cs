@@ -27,4 +27,17 @@ namespace Game
         Wind = 4,
         Undefined = 7,
     }
+
+    /// <summary>
+    /// Alias for Affinity, used by the Skill data system
+    /// </summary>
+    public enum ElementType
+    {
+        Normal = 0,
+        Earth = 1,
+        Water = 2,
+        Fire = 3,
+        Wind = 4,
+        Undefined = 7,
+    }
 }

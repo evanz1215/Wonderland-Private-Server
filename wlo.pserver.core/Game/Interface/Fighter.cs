@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,8 +13,7 @@ namespace Game.Battle
         BattleRole BattlePosition { get; set; }
         eFighterType TypeofFighter { get; }
         FighterState BattleState { get; }
-        //Game.Code.PetRelated.PetList Pets { get; }
-        //BattleAction myAction { get; set; }
+        BattleAction myAction { get; set; }
         UInt16 ClickID { get; set; }
         UInt32 OwnerID { get; set; }
         byte Level { get; }
@@ -28,7 +27,7 @@ namespace Game.Battle
         Int16 MaxSP { get; }
         Affinity Element { get; }
         RebornJob Job { get; }
-        //Skill SkillEffect { get; set; }
+        BattleSkill SkillEffect { get; set; }
         bool Reborn { get; }
 
         Int32 FullMatk { get; }

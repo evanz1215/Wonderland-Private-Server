@@ -35,6 +35,7 @@ namespace Game
         Healing1,
         Revival,
         Defend = 10,
+        Capture = 11,
         Flee = 12,
         Seals2,
     }

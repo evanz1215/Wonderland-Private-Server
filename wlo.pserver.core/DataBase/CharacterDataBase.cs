@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using MySql.Data.MySqlClient;
 using System.Data;
 using Game;
+using Game.Code.PetRelated;
 using Game.Bots;
 using RCLibrary.Core;
 using RCLibrary.Core.Networking;
@@ -132,6 +133,25 @@ namespace DataBase
             charunlocks.Add("charID", "int/NN");
             charunlocks.Add("maploc", "int");
             charunlocks.Add("clickID", "int");
+            #endregion
+
+            #region charpet Columns
+            Dictionary<string, string> charpet = new Dictionary<string, string>();
+            charpet.Add("pri_key", "int/NN/AI/PK");
+            charpet.Add("charID", "int/NN");
+            charpet.Add("slot", "int/NN");
+            charpet.Add("npcID", "int/NN");
+            charpet.Add("petName", "text");
+            charpet.Add("petStr", "int");
+            charpet.Add("petCon", "int");
+            charpet.Add("petInt", "int");
+            charpet.Add("petWis", "int");
+            charpet.Add("petAgi", "int");
+            charpet.Add("petElement", "int");
+            charpet.Add("totalExp", "int");
+            charpet.Add("curHP", "int");
+            charpet.Add("curSP", "int");
+            charpet.Add("amity", "int");
             #endregion
 
             #region inv
@@ -561,6 +581,78 @@ namespace DataBase
             }
             #endregion
 
+            #region charpet Verification
+        DebugSystem.Write("Checking for charpet table");
+        retry8:
+
+            if (GetDataTable("SELECT * FROM " + "charpet") != null) goto exist8;
+
+            DebugSystem.Write("Setuping up charpet table");
+
+            nonsqlite_prikey = "";
+            cmstr = "create table " + "charpet" + " (";
+
+            foreach (var t in charpet)
+            {
+                var str = "";
+                var att = t.Value.Split('/');
+
+                switch (ServType)
+                {
+                    case RCLibrary.Core.DataBaseTypes.MySQl:
+                        {
+                            foreach (var a in att)
+                                switch (a)
+                                {
+                                    case "text": str += "text "; break;
+                                    case "int": str += "int(11) "; break;
+                                    case "NN": str += "NOT NULL "; break;
+                                    case "AI": str += "AUTO_INCREMENT "; break;
+                                    case "PK": nonsqlite_prikey = "PRIMARY KEY (" + t.Key + ")"; break;
+                                }
+                        } break;
+                    case RCLibrary.Core.DataBaseTypes.Sqlite:
+                        {
+                            if (att.Count(c => c == "pk") > 0 && att.Count(c => c == "NN") > 0)
+                                att = att.Where(c => c != "NN").ToArray();
+
+                            foreach (var a in att)
+                                switch (a)
+                                {
+                                    case "text": str += "TEXT "; break;
+                                    case "int": str += "INTEGER "; break;
+                                    case "PK": str += "PRIMARY KEY "; break;
+                                }
+                        } break;
+                }
+
+                cmstr += string.Format("{0} {1},", t.Key, str);
+            }
+
+            if (nonsqlite_prikey != "")
+                cmstr += string.Format("{0},", nonsqlite_prikey);
+
+            cmstr = cmstr.Substring(0, cmstr.Length - 1);
+
+            if (ServType == RCLibrary.Core.DataBaseTypes.MySQl)
+                cmstr += ") ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+            else if (ServType == RCLibrary.Core.DataBaseTypes.Sqlite)
+                cmstr += ");";
+
+            ExecuteNonQuery(cmstr);
+
+        exist8:
+            foreach (string h in charpet.Keys)
+            {
+                if (GetDataTable("select " + h + " from " + "charpet") == null)
+                {
+                    DebugSystem.Write("Recreating " + "charpet" + " table");
+                    ExecuteNonQuery("drop table if exists " + "charpet");
+                    goto retry8;
+                }
+            }
+            #endregion
+
             #region inv Verification
         DebugSystem.Write("Checking for inventory table");
         retry6:
@@ -919,11 +1011,14 @@ namespace DataBase
                     id = ushort.Parse(rows[i]["itemID"].ToString());
                     if (id != 0)
                     {
-                        t[byte.Parse(rows[i]["pos"].ToString())].CopyFrom(ItemDat.GetItemByID(id));
-                        t[byte.Parse(rows[i]["pos"].ToString())].Ammt = 1;
-                        t[byte.Parse(rows[i]["pos"].ToString())].Damage = byte.Parse(rows[i]["dmg"].ToString());
-                        //                    tmp4.Add((byte)i, new string[]{id.ToString(), rows[i]["socketID"].ToString(), rows[i]["bombID"].ToString(),rows[i]["sewID"].ToString(), 
-                        //rows[i]["dmg"].ToString(),rows[i]["forge"].ToString(), });
+                        byte pos = byte.Parse(rows[i]["pos"].ToString());
+                        t[pos].CopyFrom(ItemDat.GetItemByID(id));
+                        t[pos].Ammt = 1;
+                        t[pos].Damage = byte.Parse(rows[i]["dmg"].ToString());
+                        t[pos].SocketID = uint.Parse(rows[i]["socketID"].ToString());
+                        t[pos].BombID = uint.Parse(rows[i]["bombID"].ToString());
+                        t[pos].SewID = uint.Parse(rows[i]["sewID"].ToString());
+                        t[pos].Forge = byte.Parse(rows[i]["forge"].ToString());
                     }
                 }
             }
@@ -1029,14 +1124,59 @@ namespace DataBase
                     id = ushort.Parse(rows[i]["itemID"].ToString());
                     if (id != 0)
                     {
-                        t[byte.Parse(rows[i]["pos"].ToString())].CopyFrom(ItemDat.GetItemByID(id));
-                        t[byte.Parse(rows[i]["pos"].ToString())].Ammt = 1;
-                        t[byte.Parse(rows[i]["pos"].ToString())].Damage = byte.Parse(rows[i]["dmg"].ToString());
-                        //                    tmp4.Add((byte)i, new string[]{id.ToString(), rows[i]["socketID"].ToString(), rows[i]["bombID"].ToString(),rows[i]["sewID"].ToString(), 
-                        //rows[i]["dmg"].ToString(),rows[i]["forge"].ToString(), });
+                        byte pos = byte.Parse(rows[i]["pos"].ToString());
+                        t[pos].CopyFrom(ItemDat.GetItemByID(id));
+                        t[pos].Ammt = 1;
+                        t[pos].Damage = byte.Parse(rows[i]["dmg"].ToString());
+                        t[pos].SocketID = uint.Parse(rows[i]["socketID"].ToString());
+                        t[pos].BombID = uint.Parse(rows[i]["bombID"].ToString());
+                        t[pos].SewID = uint.Parse(rows[i]["sewID"].ToString());
+                        t[pos].Forge = byte.Parse(rows[i]["forge"].ToString());
                     }
                 }
             }
+
+            //load pets
+            try { src = GetDataTable("SELECT * FROM charpet where charID = '" + charID + "' ORDER BY slot"); }
+            catch { src = null; }
+
+            if (src != null && src.Rows.Count > 0)
+            {
+                rows = new DataRow[src.Rows.Count];
+                src.Rows.CopyTo(rows, 0);
+
+                foreach (var row in rows)
+                {
+                    ushort npcID = ushort.Parse(row["npcID"].ToString());
+                    if (npcID == 0) continue;
+
+                    string petName = row["petName"].ToString();
+                    ushort petStr = ushort.Parse(row["petStr"].ToString());
+                    ushort petCon = ushort.Parse(row["petCon"].ToString());
+                    ushort petInt = ushort.Parse(row["petInt"].ToString());
+                    ushort petWis = ushort.Parse(row["petWis"].ToString());
+                    ushort petAgi = ushort.Parse(row["petAgi"].ToString());
+                    byte petElement = byte.Parse(row["petElement"].ToString());
+                    long totalExp = long.Parse(row["totalExp"].ToString());
+                    int curHP = int.Parse(row["curHP"].ToString());
+                    int curSP = int.Parse(row["curSP"].ToString());
+                    byte amity = byte.Parse(row["amity"].ToString());
+
+                    t.Pets.ReceivePetFromCapture(npcID, petName, petStr, petCon, petInt, petWis, petAgi, petElement, true);
+
+                    // Restore saved exp/HP/SP/amity
+                    byte slot = (byte)t.Pets.Count;
+                    var pet = t.Pets[slot];
+                    if (pet != null)
+                    {
+                        pet.TotalExp = totalExp;
+                        pet.CurHP = curHP;
+                        pet.CurSP = curSP;
+                        pet.Amity = amity;
+                    }
+                }
+            }
+
             return true;
         }
 
@@ -1251,6 +1391,34 @@ namespace DataBase
 
             #region write ext data
             ExecuteNonQuery(string.Format("UPDATE charactersExtData SET {0} where charID = '" + charID + "';", string.Format(" Settings = '{0}', Friends = '{1}', Guild = '{2}', Mail = '{3}'", player.Settings.ToString(), /*player.GetFriends_Flag*/"", "0", /*player.GetMailboxFlags()*/"")));
+            #endregion
+
+            #region write pets
+            try { ExecuteNonQuery("DELETE FROM charpet where charID ='" + charID + "';"); }
+            catch { }
+
+            if (player.Pets != null && player.Pets.Count > 0)
+            {
+                foreach (var kvp in player.Pets.AllPets)
+                {
+                    var pet = kvp.Value;
+                    if (pet == null || pet.ID == 0) continue;
+
+                    string petInsert = string.Format(
+                        "('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}','{10}','{11}','{12}','{13}')",
+                        charID, kvp.Key, pet.ID, pet.Name.Replace("'", "''"),
+                        pet.Str, pet.Con, pet.Int, pet.Wis, pet.Agi,
+                        (byte)pet.Element, pet.TotalExp, pet.CurHP, pet.CurSP, pet.Amity);
+
+                    try
+                    {
+                        ExecuteNonQuery(string.Format(
+                            "INSERT INTO charpet (charID,slot,npcID,petName,petStr,petCon,petInt,petWis,petAgi,petElement,totalExp,curHP,curSP,amity) VALUES {0};",
+                            petInsert));
+                    }
+                    catch (Exception ex) { DebugSystem.Write(new ExceptionData(ex)); }
+                }
+            }
             #endregion
 
             return true;

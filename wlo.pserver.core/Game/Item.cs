@@ -14,6 +14,11 @@ namespace Game.Code
         {
         }
 
+        /// <summary>
+        /// Forge multiplier: each forge level adds 5% bonus
+        /// </summary>
+        double ForgeMultiplier { get { return 1.0 + (Forge * 0.05); } }
+
         public Int32 HP
         {
             get
@@ -21,7 +26,7 @@ namespace Game.Code
                 int val = 0;
                 //val += (Data.StatusType[0] == 207) ? (Int32)Data.StatusUp[0] : 0;
                 //val += (Data.StatusType[1] == 207) ? (Int32)Data.StatusUp[1] : 0;
-                return val;
+                return (int)(val * ForgeMultiplier);
             }
         }
 
@@ -32,7 +37,7 @@ namespace Game.Code
                 int val = 0;
                 //val += (Data.StatusType[0] == 208) ? (Int32)Data.StatusUp[0] : 0;
                 //val += (Data.StatusType[1] == 208) ? (Int32)Data.StatusUp[1] : 0;
-                return val;
+                return (int)(val * ForgeMultiplier);
             }
         }
 
@@ -43,7 +48,7 @@ namespace Game.Code
                 int val = 0;
                 //val += (Data.StatusType[0] == 210) ? (Int32)Data.StatusUp[0] : 0;
                 //val += (Data.StatusType[1] == 210) ? (Int32)Data.StatusUp[1] : 0;
-                return val;
+                return (int)(val * ForgeMultiplier);
             }
         }
 
@@ -54,7 +59,7 @@ namespace Game.Code
                 int val = 0;
                 //val += (Data.StatusType[0] == 211) ? (Int32)Data.StatusUp[0] : 0;
                 //val += (Data.StatusType[1] == 211) ? (Int32)Data.StatusUp[1] : 0;
-                return val;
+                return (int)(val * ForgeMultiplier);
             }
         }
 
@@ -65,7 +70,7 @@ namespace Game.Code
                 int val = 0;
                 //val += (Data.StatusType[0] == 215) ? (Int32)Data.StatusUp[0] : 0;
                 //val += (Data.StatusType[1] == 215) ? (Int32)Data.StatusUp[1] : 0;
-                return val;
+                return (int)(val * ForgeMultiplier);
             }
         }
 
@@ -76,7 +81,7 @@ namespace Game.Code
                 int val = 0;
                 //val += (Data.StatusType[0] == 216) ? (Int32)Data.StatusUp[0] : 0;
                 //val += (Data.StatusType[1] == 216) ? (Int32)Data.StatusUp[1] : 0;
-                return val;
+                return (int)(val * ForgeMultiplier);
             }
         }
 
@@ -87,7 +92,7 @@ namespace Game.Code
                 int val = 0;
                 //val += (Data.StatusType[0] == 214) ? (Int32)Data.StatusUp[0] : 0;
                 //val += (Data.StatusType[1] == 214) ? (Int32)Data.StatusUp[1] : 0;
-                return val;
+                return (int)(val * ForgeMultiplier);
             }
         }
 
@@ -167,6 +172,12 @@ namespace Game.Code
         byte parentSlot;
         bool locked;
 
+        // Enhancement fields (persisted to DB)
+        uint m_socketID;
+        uint m_bombID;
+        uint m_sewID;
+        byte m_forge;
+
         public Item()
         {
             Clear();
@@ -190,6 +201,11 @@ namespace Game.Code
         public byte Parent { get { return parentSlot; } set { SetField<byte>(ref parentSlot, value); } }
         public bool isLocked { get { return locked; } set { SetField<bool>(ref locked, value); } }
 
+        // Enhancement properties
+        public uint SocketID { get { return m_socketID; } set { m_socketID = value; } }
+        public uint BombID { get { return m_bombID; } set { m_bombID = value; } }
+        public uint SewID { get { return m_sewID; } set { m_sewID = value; } }
+        public byte Forge { get { return m_forge; } set { m_forge = value; } }
 
         public eItemType Type { get { return (eItemType)Data.ItemType; } }
         /// <summary>
@@ -302,13 +318,16 @@ namespace Game.Code
             damage = 0;
             parentSlot = 0;
             locked = false;
+            m_socketID = 0;
+            m_bombID = 0;
+            m_sewID = 0;
+            m_forge = 0;
         }
         /// <summary>
         /// Copys values from another Item object
         /// </summary>
         /// <param name="i"></param>
-        public void CopyFrom(Item
- i)
+        public void CopyFrom(Item i)
         {
             if (i != null)
             {
@@ -317,6 +336,10 @@ namespace Game.Code
                 damage = i.Damage;
                 parentSlot = i.Parent;
                 locked = i.isLocked;
+                m_socketID = i.SocketID;
+                m_bombID = i.BombID;
+                m_sewID = i.SewID;
+                m_forge = i.Forge;
             }
         }
         public void CopyFrom(PhxItemInfo

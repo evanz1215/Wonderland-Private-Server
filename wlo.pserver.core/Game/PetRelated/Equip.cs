@@ -664,15 +664,14 @@ namespace Game.Code.PetRelated
             {
                 lock (m_Lock)
                 {
-                    SendPacket tmp = new SendPacket(false);
+                    List<byte> tmp = new List<byte>();
                     if (WornCount > 0)
                     {
-
                         for (byte a = 1; a < 7; a++)
                             if (this[a].ItemID > 0)
-                                tmp.Pack16(this[a].ItemID);
+                                tmp.AddRange(BitConverter.GetBytes(this[a].ItemID));
                     }
-                    return tmp.Buffer;
+                    return tmp;
                 }
             }
         }
@@ -685,14 +684,11 @@ namespace Game.Code.PetRelated
             {
                 lock (m_Lock)
                 {
-                    SendPacket tmp = new SendPacket(false);
+                    List<byte> tmp = new List<byte>();
                     for (byte n = 1; n < 7; n++)
-                        if (this[n].ItemID != 0)
-                            tmp.Pack16(this[n].ItemID);
-                        else
-                            tmp.Pack16(0);
+                        tmp.AddRange(BitConverter.GetBytes(this[n].ItemID));
 
-                    return tmp.Buffer;
+                    return tmp;
                 }
             }
         }
@@ -705,22 +701,22 @@ namespace Game.Code.PetRelated
             {
                 lock (m_Lock)
                 {
-                    SendPacket tmp = new SendPacket(false);
-                    tmp.Pack((byte)23);
-                    tmp.Pack((byte)11);
+                    List<byte> tmp = new List<byte>();
+                    tmp.Add(23);
+                    tmp.Add(11);
                     if (WornCount > 0)
                     {
                         for (byte n = 1; n < 7; n++)
                         {
                             if (this[n].ItemID != 0)
                             {
-                                tmp.Pack16(this[n].ItemID);
-                                tmp.Pack((byte)this[n].Damage);
-                                tmp.PackArray(new byte[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
+                                tmp.AddRange(BitConverter.GetBytes(this[n].ItemID));
+                                tmp.Add((byte)this[n].Damage);
+                                tmp.AddRange(new byte[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
                             }
                         }
                     }
-                    return tmp.Buffer;
+                    return tmp;
                 }
             }
         }
@@ -743,10 +739,11 @@ namespace Game.Code.PetRelated
         /// <param name="client"></param>
         public virtual void ProcessSocket(Player src, SendPacket p)
         {
-            p.m_nUnpackIndex = 4;
+            RecievePacket rp = new RecievePacket(p);
+            rp.SetPtr(4);
 
-            var a = p.Unpack8();
-            var b = p.Unpack8();
+            var a = rp.Unpack8();
+            var b = rp.Unpack8();
 
             switch (a)
             {
@@ -758,7 +755,7 @@ namespace Game.Code.PetRelated
                             #region item selected to equip
                             case 11:
                                 {
-                                    byte loc = p.Unpack8();
+                                    byte loc = rp.Unpack8();
 
                                     var item = onWearEquip(loc);
                                     if (item != null)
@@ -767,20 +764,18 @@ namespace Game.Code.PetRelated
                                         Send8_1();
 
                                         SendPacket tmp2 = new SendPacket();
-                                        tmp2.Pack((byte)5);
-                                        tmp2.Pack((byte)2);
-                                        tmp2.Pack(src.CharID);
+                                        tmp2.Pack8(5);
+                                        tmp2.Pack8(2);
+                                        tmp2.Pack32(src.CharID);
                                         tmp2.Pack16(item.ItemID);
-                                        tmp2.SetHeader();
                                         src.CurMap.Broadcast(tmp2, "Ex", src.CharID);
 
                                         tmp2 = new SendPacket();
-                                        tmp2.Pack((byte)23);
-                                        tmp2.Pack((byte)17);
-                                        tmp2.Pack((byte)loc);
-                                        tmp2.Pack((byte)loc);
-                                        tmp2.SetHeader();
-                                        SendPacket(tmp2);
+                                        tmp2.Pack8(23);
+                                        tmp2.Pack8(17);
+                                        tmp2.Pack8(loc);
+                                        tmp2.Pack8(loc);
+                                        Send(tmp2);
                                     }
                                 }
                                 break;
@@ -788,8 +783,8 @@ namespace Game.Code.PetRelated
                             #region item selected to unequip
                             case 12:
                                 {
-                                    byte loc = p.Unpack8();
-                                    byte dst = p.Unpack8();
+                                    byte loc = rp.Unpack8();
+                                    byte dst = rp.Unpack8();
                                     if ((loc > 0) && (loc < 7) && (dst > 0) && (dst < 51))
                                     {
                                         var eq = unWear(loc);
@@ -803,19 +798,17 @@ namespace Game.Code.PetRelated
                                             {
                                                 Send8_1();
                                                 SendPacket tmp2 = new SendPacket();
-                                                tmp2.Pack((byte)23);
-                                                tmp2.Pack((byte)16);
-                                                tmp2.Pack((byte)loc);
-                                                tmp2.Pack((byte)dst);
-                                                tmp2.SetHeader();
-                                                SendPacket(tmp2);
+                                                tmp2.Pack8(23);
+                                                tmp2.Pack8(16);
+                                                tmp2.Pack8(loc);
+                                                tmp2.Pack8(dst);
+                                                Send(tmp2);
 
                                                 tmp2 = new SendPacket();
-                                                tmp2.Pack((byte)5);
-                                                tmp2.Pack((byte)1);
-                                                tmp2.Pack(src.CharID);
+                                                tmp2.Pack8(5);
+                                                tmp2.Pack8(1);
+                                                tmp2.Pack32(src.CharID);
                                                 tmp2.Pack16(eq.ItemID);
-                                                tmp2.SetHeader();
                                                 src.CurMap.Broadcast(tmp2, "Ex", src.CharID);
                                             }
                                         }
@@ -846,67 +839,67 @@ namespace Game.Code.PetRelated
         {
             lock (m_Lock)
             {
-                PacketBuilder tmp = new PacketBuilder();
-                tmp.Begin(false);
+                Tools.PacketBuilder tmp = new Tools.PacketBuilder();
+                tmp.Begin(null);
 
                 if (levelup)
                 {
-                    tmp.Add(SendPacket.FromFormat("bbbbl", 8, 2, 36, 1, TotalExp));
-                    tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 2, 35, 1, Level, 0));
-                    tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 2, 37, 1, (Level - 1), 0));
-                    tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 2, 38, 1, SkillPoints, 0));
+                    tmp.Add(Tools.FromFormatToArray("bbbbl", 8, 2, 36, 1, TotalExp));
+                    tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 2, 35, 1, Level, 0));
+                    tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 2, 37, 1, (Level - 1), 0));
+                    tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 2, 38, 1, SkillPoints, 0));
                     CurHP = FullHP;
                     CurSP = FullSP;
                 }
 
                 //hp
-                tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 2, 207, 1, EquippedMaxHP, 0));
-                tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 2, 25, 1, (CurHP > FullHP) ? FullHP : CurHP, 0));
+                tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 2, 207, 1, EquippedMaxHP, 0));
+                tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 2, 25, 1, (CurHP > FullHP) ? FullHP : CurHP, 0));
                 //sp
-                tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 2, 208, 1, EquippedMaxSP, 0));
-                tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 1, 26, 1, (CurSP > FullSP) ? FullSP : CurSP, 0));
+                tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 2, 208, 1, EquippedMaxSP, 0));
+                tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 1, 26, 1, (CurSP > FullSP) ? FullSP : CurSP, 0));
                 //str
-                tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 2, 210, 1, EquippedATK, 0));
-                tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 2, 41, 1, FullAtk, 0));
-                if (levelup) tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 1, 28, 1, Str, 0));
+                tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 2, 210, 1, EquippedATK, 0));
+                tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 2, 41, 1, FullAtk, 0));
+                if (levelup) tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 1, 28, 1, Str, 0));
                 //con
-                tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 2, 211, 1, EquippedDEF, 0));
-                tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 2, 42, 1, FullDef, 0));
+                tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 2, 211, 1, EquippedDEF, 0));
+                tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 2, 42, 1, FullDef, 0));
                 if (levelup)
                 {
-                    tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 1, 205, 1, FullHP, 0));
-                    tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 1, 29, 1, Con, 0));
+                    tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 1, 205, 1, FullHP, 0));
+                    tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 1, 29, 1, Con, 0));
                 }
                 //spd
-                tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 1, 214, 1, EquippedSPD, 0));
-                tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 1, 45, 1, FullSpd, 0));
-                if (levelup) tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 1, 30, 1, Agi, 0));
+                tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 1, 214, 1, EquippedSPD, 0));
+                tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 1, 45, 1, FullSpd, 0));
+                if (levelup) tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 1, 30, 1, Agi, 0));
                 //int
-                tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 1, 215, 1, EquippedMAT, 0));
-                tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 1, 43, 1, FullMatk, 0));
-                if (levelup) tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 1, 27, 1, Int, 0));
+                tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 1, 215, 1, EquippedMAT, 0));
+                tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 1, 43, 1, FullMatk, 0));
+                if (levelup) tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 1, 27, 1, Int, 0));
                 //wis
-                tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 1, 216, 1, EquippedMDF, 0));
-                tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 1, 44, 1, FullMdef, 0));
+                tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 1, 216, 1, EquippedMDF, 0));
+                tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 1, 44, 1, FullMdef, 0));
                 if (levelup)
                 {
-                    tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 1, 206, 1, FullSP, 0));
-                    tmp.Add(SendPacket.FromFormat("bbbbdd", 8, 1, 33, 1, Wis, 0));
+                    tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 1, 206, 1, FullSP, 0));
+                    tmp.Add(Tools.FromFormatToArray("bbbbdd", 8, 1, 33, 1, Wis, 0));
                 }
 
-                SendPacket(tmp.End());
+                Send(new SendPacket(tmp.End()));
             }
         }
 
         void SendExp()
         {
             SendPacket p = new SendPacket();
-            p.PackArray(new byte[] { 8, 1 });
-            p.Pack((byte)36);
-            p.Pack((byte)1);
+            p.Pack8(8);
+            p.Pack8(1);
+            p.Pack8(36);
+            p.Pack8(1);
             p.Pack64((ulong)TotalExp);
-            p.SetHeader();
-            SendPacket(p);
+            Send(p);
         }
 
         #region Helper Methods

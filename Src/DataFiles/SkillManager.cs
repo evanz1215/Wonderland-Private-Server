@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Reflection;
-using Wonderland_Private_Server.Code.Enums;
+using Game;
 
 namespace Wonderland_Private_Server.DataManagement.DataFiles
 {
@@ -44,13 +44,13 @@ namespace Wonderland_Private_Server.DataManagement.DataFiles
                 GradeEndRange = (int)Math.Floor((double)((m / 100.0) * Max));
         }
 
-        public List<byte[]> GetTargets(byte[] tgrid, BattleSide loc)
+        public List<byte[]> GetTargets(byte[] tgrid, BattleRole loc)
         {
 
             List<byte[]> trglist = new List<byte[]>();
             switch (loc)
             {
-                case BattleSide.Defending:
+                case BattleRole.Defending:
                     {
                         switch (APattern)
                         {
@@ -67,7 +67,7 @@ namespace Wonderland_Private_Server.DataManagement.DataFiles
                                 } break;
                         } break;
                     }
-                case BattleSide.Attacking:
+                case BattleRole.Attacking:
                     {
                         switch (APattern)
                         {
@@ -398,7 +398,7 @@ namespace Wonderland_Private_Server.DataManagement.DataFiles
                         fs.Close();
                         DebugSystem.Write("Skill.Dat Loaded ( " + m_List.Count + " Skill)");
                     }
-                    catch (Exception ex) { DebugSystem.Write(ex); }
+                    catch (Exception ex) { DebugSystem.Write(ex.ToString()); }
                 }
                 return true;
         }

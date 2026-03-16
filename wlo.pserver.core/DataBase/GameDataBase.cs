@@ -51,8 +51,11 @@ namespace DataBase
                                 data.CopyFrom(ItemDat.GetItemByID(id));
                                 data.Ammt = byte.Parse(src.Rows[i]["qty"].ToString());
                                 data.Damage = byte.Parse(src.Rows[i]["dmg"].ToString());
+                                data.SocketID = uint.Parse(src.Rows[i]["socketID"].ToString());
+                                data.BombID = uint.Parse(src.Rows[i]["bombID"].ToString());
+                                data.SewID = uint.Parse(src.Rows[i]["sewID"].ToString());
+                                data.Forge = byte.Parse(src.Rows[i]["forge"].ToString());
                                 c.Inv[byte.Parse(src.Rows[i]["pos"].ToString())].CopyFrom(data);
-                                //rows[i]["socketID"].ToString(), rows[i]["bombID"].ToString(),rows[i]["sewID"].ToString(),rows[i]["dmg"].ToString(),rows[i]["forge"].ToString(), , });
                             }
                             break;
                     }
