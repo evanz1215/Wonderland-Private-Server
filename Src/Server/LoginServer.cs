@@ -46,6 +46,7 @@ namespace Server
             try
             {
                 m_Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                m_Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
                 m_Socket.Bind(new IPEndPoint(0x00000000, 6414));
                 m_Socket.Blocking = true;
                 DebugSystem.Write("Server bound to port " + 6414 + " successfully.");

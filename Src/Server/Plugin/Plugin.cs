@@ -68,27 +68,32 @@ namespace Plugin
         {
             try
             {
-                //kk we should be ok to update our files
                 var file = new FileInfo(e.FullPath);
-
-                //Generate obj
                 var asm = Assembly.Load(File.ReadAllBytes(e.FullPath));
                 Type[] types = asm.GetTypes();
+                var mapTypes = types.Where(c => typeof(GameMap).IsAssignableFrom(c) && c.IsPublic && !c.IsAbstract).ToList();
 
-                if (types.Count(c => typeof(GameMap).IsAssignableFrom(c)) > 0)
+                foreach (var type in mapTypes)
                 {
                     for (int a = 0; a < MapList.Count; a++)
                     {
                         if (MapList[a].FileID == file.Name && file.LastWriteTime > MapList[a].Lastwrite)
                         {
-                            MapList[a] = (GameMap)Activator.CreateInstance(asm.GetType(types.Single(c => typeof(GameMap).IsAssignableFrom(c)).ToString()), new object[] { this, new FileInfo(e.FullPath) });
-                           DebugSystem.Write("[PluginSystem][Info] - Map " + MapList[a].MapID + " has been updated");
-                            break;
+                            try
+                            {
+                                var updated = (GameMap)Activator.CreateInstance(asm.GetType(type.ToString()), new object[] { this, new FileInfo(e.FullPath) });
+                                if (MapList[a].MapID == updated.MapID)
+                                {
+                                    MapList[a] = updated;
+                                    DebugSystem.Write("[PluginSystem][Info] - Map " + MapList[a].MapID + " has been updated");
+                                }
+                            }
+                            catch { }
                         }
                     }
                 }
             }
-            catch (Exception d) { }
+            catch { }
         }
 
         void folderwatch_Created(object sender, FileSystemEventArgs e)
@@ -96,21 +101,24 @@ namespace Plugin
             try
             {
                 var file = new FileInfo(e.FullPath);
-
-                //Generate obj
                 var asm = Assembly.Load(File.ReadAllBytes(e.FullPath));
 
                 Type[] types = asm.GetTypes();
-                if (types.Count(c => typeof(GameMap).IsAssignableFrom(c)) > 0)
-                {
-                    Type type = types.Single(c => typeof(GameMap).IsAssignableFrom(c) && c.IsPublic);
-                    var gh = (GameMap)Activator.CreateInstance(asm.GetType(type.ToString()), new object[] { this, new FileInfo(e.FullPath) });
+                var mapTypes = types.Where(c => typeof(GameMap).IsAssignableFrom(c) && c.IsPublic && !c.IsAbstract).ToList();
 
-                    if (MapList.Count(c => c.FileID == file.Name) == 0)
+                foreach (var type in mapTypes)
+                {
+                    try
                     {
-                        MapList.Add(gh);
-                        DebugSystem.Write("[PluginSystem][Info] - Map " + gh.MapID + " has been loaded into the server");
+                        var gh = (GameMap)Activator.CreateInstance(asm.GetType(type.ToString()), new object[] { this, new FileInfo(e.FullPath) });
+
+                        if (MapList.Count(c => c.MapID == gh.MapID) == 0)
+                        {
+                            MapList.Add(gh);
+                            DebugSystem.Write("[PluginSystem][Info] - Map " + gh.MapID + " has been loaded into the server");
+                        }
                     }
+                    catch (Exception ex) { DebugSystem.Write("[PluginSystem][Error] - Failed to load map type " + type.Name + ": " + ex.Message); }
                 }
             }
             catch { }
@@ -146,29 +154,30 @@ namespace Plugin
         {
             foreach (FileInfo e in new DirectoryInfo(folderwatch.Path).EnumerateFiles("*.dll", SearchOption.AllDirectories))
             {
-                //Generate obj
-
                 try
                 {
                     var file = new FileInfo(e.FullName);
-
-                    //Generate obj
                     var asm = Assembly.Load(File.ReadAllBytes(e.FullName));
 
                     Type[] types = asm.GetTypes();
-                    if (types.Count(c => typeof(GameMap).IsAssignableFrom(c)) > 0)
-                    {
-                        Type type = types.Single(c => typeof(GameMap).IsAssignableFrom(c) && c.IsPublic);
-                        var gh = (GameMap)Activator.CreateInstance(asm.GetType(type.ToString()), new object[] { this, e });
+                    var mapTypes = types.Where(c => typeof(GameMap).IsAssignableFrom(c) && c.IsPublic && !c.IsAbstract).ToList();
 
-                        if (MapList.Count(c => c.FileID == file.Name) == 0)
+                    foreach (var type in mapTypes)
+                    {
+                        try
                         {
-                            MapList.Add(gh);
-                            DebugSystem.Write("[PluginSystem][Info] - Map " + gh.MapID + " has been loaded into the server");
+                            var gh = (GameMap)Activator.CreateInstance(asm.GetType(type.ToString()), new object[] { this, e });
+
+                            if (MapList.Count(c => c.MapID == gh.MapID) == 0)
+                            {
+                                MapList.Add(gh);
+                                DebugSystem.Write("[PluginSystem][Info] - Map " + gh.MapID + " has been loaded into the server");
+                            }
                         }
+                        catch (Exception ex) { DebugSystem.Write("[PluginSystem][Error] - Failed to load map type " + type.Name + ": " + ex.Message); }
                     }
                 }
-                catch { }
+                catch (Exception ex) { DebugSystem.Write("[PluginSystem][Error] - Failed to load assembly " + e.Name + ": " + ex.Message); }
             }
 
             DebugSystem.Write("[PluginSystem][Info] - Found " + MapList.Count + " Maps");

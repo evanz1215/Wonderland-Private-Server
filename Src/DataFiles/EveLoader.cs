@@ -37,6 +37,10 @@ namespace Wonderland_Private_Server.DataManagement.DataFiles
         {
             return Maps[ID];
         }
+        public bool HasMapData(ushort ID)
+        {
+            return Maps.ContainsKey(ID);
+        }
 
         void ReadData(byte[] d)
         {
@@ -58,39 +62,43 @@ namespace Wonderland_Private_Server.DataManagement.DataFiles
             //tricky as hell i kno
             Load_FinalData();
 
-            List<KeyValuePair<byte,string>> str = new List<KeyValuePair<byte,string>>();
-            List<KeyValuePair<byte, string>> str2 = new List<KeyValuePair<byte, string>>();
-            List<byte> src = new List<byte>();
-            List<byte> src2 = new List<byte>();
+            // Debug output - only run if both managers are available
+            if (cGlobal.gNpcManager != null && cGlobal.gItemManager != null)
+            {
+                List<KeyValuePair<byte,string>> str = new List<KeyValuePair<byte,string>>();
+                List<KeyValuePair<byte, string>> str2 = new List<KeyValuePair<byte, string>>();
+                List<byte> src = new List<byte>();
+                List<byte> src2 = new List<byte>();
 
-            foreach (var m in Maps.Values)
-            {
-                    foreach (var o in m.Npclist)
-                    {
-                        if (!src.Contains(o.unknownbyte4))
-                            src.Add(o.unknownbyte4);
-                        if (!src2.Contains(o.unknownbyte5))
-                            src2.Add(o.unknownbyte5);
-                        var npc = cGlobal.gNpcManager.GetNpc((ushort)o.npcId);
-                        var item = cGlobal.gItemManager.GetItem((ushort)o.npcId);
-                        str.Add(new KeyValuePair<byte, string>(o.unknownbyte4, string.Format("Name {0} ID {1} Map {2} Has Walk {3} HasExt Walk {4}",(npc != null)?npc.NpcName:(item != null)?item.Name:"Unknown", o.npcId,m.mapID,(o.walksteps.Count > 0),(o.walkpatterns.Count>0))));
-                        str2.Add(new KeyValuePair<byte, string>(o.unknownbyte5, string.Format("Name {0} ID {1} Map {2} Has Walk {3} HasExt Walk {4}", (npc != null) ? npc.NpcName : (item != null) ? item.Name : "Unknown", o.npcId, m.mapID, (o.walksteps.Count > 0), (o.walkpatterns.Count > 0))));
-                    }
-            }
-            
-            foreach (var r in src)
-            {
-                var file = File.CreateText(r + ".txt");
-                foreach(var t in str.Where(c=>c.Key == r))
-                    file.WriteLine(t.Value);
-                file.Close();
-            }
-            foreach (var r in src2)
-            {
-                var file = File.CreateText("U"+r + ".txt");
-                foreach (var t in str.Where(c => c.Key == r))
-                    file.WriteLine(t.Value);
-                file.Close();
+                foreach (var m in Maps.Values)
+                {
+                        foreach (var o in m.Npclist)
+                        {
+                            if (!src.Contains(o.unknownbyte4))
+                                src.Add(o.unknownbyte4);
+                            if (!src2.Contains(o.unknownbyte5))
+                                src2.Add(o.unknownbyte5);
+                            var npc = cGlobal.gNpcManager.GetNpc((ushort)o.npcId);
+                            var item = cGlobal.gItemManager.GetItem((ushort)o.npcId);
+                            str.Add(new KeyValuePair<byte, string>(o.unknownbyte4, string.Format("Name {0} ID {1} Map {2} Has Walk {3} HasExt Walk {4}",(npc != null)?npc.NpcName:(item != null)?item.Name:"Unknown", o.npcId,m.mapID,(o.walksteps.Count > 0),(o.walkpatterns.Count>0))));
+                            str2.Add(new KeyValuePair<byte, string>(o.unknownbyte5, string.Format("Name {0} ID {1} Map {2} Has Walk {3} HasExt Walk {4}", (npc != null) ? npc.NpcName : (item != null) ? item.Name : "Unknown", o.npcId, m.mapID, (o.walksteps.Count > 0), (o.walkpatterns.Count > 0))));
+                        }
+                }
+
+                foreach (var r in src)
+                {
+                    var file = File.CreateText(r + ".txt");
+                    foreach(var t in str.Where(c=>c.Key == r))
+                        file.WriteLine(t.Value);
+                    file.Close();
+                }
+                foreach (var r in src2)
+                {
+                    var file = File.CreateText("U"+r + ".txt");
+                    foreach (var t in str.Where(c => c.Key == r))
+                        file.WriteLine(t.Value);
+                    file.Close();
+                }
             }
 
         }

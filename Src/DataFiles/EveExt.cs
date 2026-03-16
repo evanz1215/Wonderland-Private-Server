@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Wonderland_Private_Server.Code.Objects;
-using Wonderland_Private_Server.Network;
+using Game;
+using Network;
 
 namespace Wonderland_Private_Server.DataManagement.DataFiles
 {
@@ -113,7 +113,7 @@ namespace Wonderland_Private_Server.DataManagement.DataFiles
 
         public void Update(DateTime time, List<Player> players)
         {
-            var list = players.Where(c => c.State == Code.Enums.PlayerState.InGame_InMap);
+            var list = players.Where(c => c.Flags.HasFlag(PlayerFlag.InMap));
             #region Walking
             if (finishwalk_anim < time)
                 if (walksteps.Count > 0)

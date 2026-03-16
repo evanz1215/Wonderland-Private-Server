@@ -32,12 +32,13 @@ namespace Game
 
         protected List<Player> m_playerlist;
         protected List<Item> ItemsDropped;
-        //protected ConcurrentDictionary<int, Battle> Battles;
+        protected ConcurrentDictionary<int, Game.Battle.Battle> Battles;
         protected ConcurrentDictionary<uint, Tent> Tents;
         protected Dictionary<byte, WarpDest> Destinations;
         protected Dictionary<byte, WarpPortal> Portals;
         protected Dictionary<ushort, Maps.ShopKeeper> ShopKeepers;
         protected Dictionary<ushort, Maps.QuestNpc> QuestNpcs;
+        protected Dictionary<ushort, ushort> MonsterNpcs; // clickID → npcID
 
         protected Queue<Player> DisconnectedQueue;
         protected Queue<KeyValuePair<DateTime, Action>> WaitingtoLogin;
@@ -46,6 +47,11 @@ namespace Game
         protected string m_name;
 
         bool shutdown = false;
+
+        /// <summary>
+        /// Static callback to get battle background ID for a map. Set by main project.
+        /// </summary>
+        public static Func<ushort, ushort> GetBattleBG;
         
 
 
@@ -57,27 +63,29 @@ namespace Game
             DisconnectedQueue = new Queue<Player>(50);
             WaitingtoLogin = new Queue<KeyValuePair<DateTime, Action>>(105);
             Tents = new ConcurrentDictionary<uint, Tent>();
-            //Battles = new ConcurrentDictionary<int, Battle>();
+            Battles = new ConcurrentDictionary<int, Game.Battle.Battle>();
             Destinations = new Dictionary<byte, WarpDest>();
             Portals = new Dictionary<byte, WarpPortal>();
             ShopKeepers = new Dictionary<ushort, Maps.ShopKeeper>();
             QuestNpcs = new Dictionary<ushort, Maps.QuestNpc>();
+            MonsterNpcs = new Dictionary<ushort, ushort>();
         }
         public GameMap(Plugin.PluginHost host, System.IO.FileInfo src)
             : base(src)
         {
-            
+
             myhost = (Plugin.PluginHost)host;
             m_playerlist = new List<Player>();
             ItemsDropped = new List<Item>(255);
             DisconnectedQueue = new Queue<Player>(50);
             WaitingtoLogin = new Queue<KeyValuePair<DateTime, Action>>(105);
             Tents = new ConcurrentDictionary<uint, Tent>();
-            //Battles = new ConcurrentDictionary<int, Battle>();
+            Battles = new ConcurrentDictionary<int, Game.Battle.Battle>();
             Destinations = new Dictionary<byte, WarpDest>();
             Portals = new Dictionary<byte, WarpPortal>();
             ShopKeepers = new Dictionary<ushort, Maps.ShopKeeper>();
             QuestNpcs = new Dictionary<ushort, Maps.QuestNpc>();
+            MonsterNpcs = new Dictionary<ushort, ushort>();
 
             LoadData();
 
@@ -89,7 +97,6 @@ namespace Game
         /// </summary>
         protected virtual void LoadData()
         {
-            this.LogInfo("tesT");
             DebugSystem.Write("["+Assembly.GetAssembly(this.GetType()).FullName+"] - Initializing Map " + MapID + " - " + MapName);
 
             var myDllAssembly = Assembly.GetAssembly(this.GetType());
@@ -402,35 +409,41 @@ namespace Game
 
                 case TeleportType.Regular:
                     {
-                        
-                            WarpDest target = Destinations[(byte)Portals[portalID].DstID];
+                            if (!Portals.ContainsKey(portalID))
+                            {
+                                DebugSystem.Write(DebugItemType.Info_Heavy, "Portal {0} not found in map {1}", portalID, MapID);
+                                tmp = new SendPacket();
+                                tmp.PackArray(new byte[] { 20, 8 });
+                                sender.Send(tmp); return false;
+                            }
+
+                            WarpPortal portal = Portals[portalID];
+
+                            if (!Destinations.ContainsKey((byte)portal.DstID))
+                            {
+                                DebugSystem.Write(DebugItemType.Info_Heavy, "Destination {0} not found in map {1}", portal.DstID, MapID);
+                                tmp = new SendPacket();
+                                tmp.PackArray(new byte[] { 20, 8 });
+                                sender.Send(tmp); return false;
+                            }
+
+                            WarpDest target = Destinations[(byte)portal.DstID];
                             GameMap map = myhost.gMapManager.GetMap((ushort)target.DstID);
 
                             if (Type != MapType.RegularMap && portalID == 1)  //create warp from Prev Map
                             {
-                                Warp_Out(portalID, sender, sender.PrevMap);// warp out of map                            
+                                Warp_Out(portalID, sender, sender.PrevMap);// warp out of map
 
                                 if ((map = myhost.gMapManager.GetMap((ushort)target.DstID)) != null)
                                     map.Warp_In(teletype, sender, new WarpData() { DstMap = (ushort)target.DstID, DstX_Axis = (ushort)target.DstX, DstY_Axis = (ushort)target.DstY }, portalID);
                             }
                             else
                             {
-                                //var WarpID = (int)Events[Portals[portalID].unknownbytearray1[0]].SubEntry[0].SubEntry[0].dialog2;
-                                if (!Portals.ContainsKey(portalID))
-                                {
-
-                                    tmp = new SendPacket();
-                                    tmp.PackArray(new byte[] { 20, 8 });
-                                    sender.Send(tmp); return false;
-                                }
-
                                 if (map != null)
                                 {
                                     Warp_Out(portalID, sender, new WarpData() { DstMap = (ushort)target.DstID, DstX_Axis = (ushort)target.DstX, DstY_Axis = (ushort)target.DstY });// warp out of map
                                     map.Warp_In(teletype, sender, new WarpData() { DstMap = (ushort)target.DstID, DstX_Axis = (ushort)target.DstX, DstY_Axis = (ushort)target.DstY }, portalID);
                                 }
-
-                                //cGlobal.WLO_World.onTelePort(portalID, new WarpData(Destinations[(byte)WarpID]), ref sender);
                             }
                     } break;
                 #endregion
@@ -693,6 +706,19 @@ namespace Game
         {
             get { return QuestNpcs.Values; }
         }
+
+        public ushort FindMonsterNpc(ushort clickID)
+        {
+            ushort npcID;
+            if (MonsterNpcs.TryGetValue(clickID, out npcID))
+                return npcID;
+            return 0;
+        }
+
+        public void AddMonsterNpc(ushort clickID, ushort npcID)
+        {
+            MonsterNpcs[clickID] = npcID;
+        }
         #endregion
 
         #region Tent
@@ -778,6 +804,62 @@ namespace Game
             }
             Broadcast(sp);
         }
+
+        #region Battle
+
+        public void onNpcPk(Player starter, Game.Battle.MobFighter enemy)
+        {
+            int a = 1;
+            while (Battles.ContainsKey(a))
+                a++;
+
+            ushort bg = (GetBattleBG != null) ? GetBattleBG((ushort)MapID) : (ushort)140;
+
+            var battle = new Game.Battle.Battle(bg, a);
+            battle.TypeofBattle = eBattleType.pk;
+            battle.startedby = starter;
+
+            // attacker side (player)
+            starter.BattlePosition = BattleRole.Attacking;
+            starter.ClickID = enemy.ClickID;
+            starter.MyBattle = battle[BattleRole.Attacking];
+            battle[BattleRole.Attacking].AddFighter(eBattleType.pk, starter);
+
+            foreach (Player d in starter.TeamMembers)
+            {
+                d.BattlePosition = BattleRole.Attacking;
+                d.ClickID = enemy.ClickID;
+                d.MyBattle = battle[BattleRole.Attacking];
+                battle[BattleRole.Attacking].AddFighter(eBattleType.pk, d);
+            }
+
+            // defender side (monster)
+            enemy.BattlePosition = BattleRole.Defending;
+            battle[BattleRole.Defending].AddFighter(eBattleType.pk, enemy);
+
+            DebugSystem.Write(string.Format("[Battle] Starting: player={0} vs mob NpcID={1} clickID={2} HP={3} grid=({4},{5}) bg={6}",
+                starter.CharID, enemy.NpcID, enemy.ClickID, enemy.MaxHP, enemy.GridX, enemy.GridY, bg));
+
+            battle.StartBattle();
+            battle.BattleState = eBattleState.Active;
+            battle.StartRound();
+            Battles.TryAdd(a, battle);
+        }
+
+        public virtual void UpdateMap()
+        {
+            foreach (var battl in Battles.Values.ToList())
+            {
+                battl.Process();
+                if (battl.BattleState == eBattleState.Ended)
+                {
+                    Game.Battle.Battle removed;
+                    Battles.TryRemove(battl.BattleID, out removed);
+                }
+            }
+        }
+
+        #endregion
 
     }
 }

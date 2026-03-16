@@ -107,6 +107,8 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Src\cGlobal.cs" />
     <Compile Include="Src\DataFiles\SkillManager.cs" />
+    <Compile Include="Src\DataFiles\EveNpcMapper.cs" />
+    <Compile Include="Src\DataFiles\NpcDecoder.cs" />
     <Compile Include="Src\Debugging\Debug.cs" />
     <Compile Include="Src\Gui\MainForm1.cs">
       <SubType>Form</SubType>
@@ -150,6 +152,7 @@
     <Compile Include="Src\Network\ActionCodes\AC13_Team.cs" />
     <Compile Include="Src\Network\ActionCodes\AC27_Shop.cs" />
     <Compile Include="Src\Network\ActionCodes\AC50_Battle.cs" />
+    <Compile Include="Src\Network\ActionCodes\AC11_Battle.cs" />
     <Compile Include="Src\Network\ActionCodes\AC63.cs" />
     <Compile Include="Src\Network\ActionCodes\AC85.cs" />
     <Compile Include="Src\Network\ActionCodes\AC86_Reborn.cs" />

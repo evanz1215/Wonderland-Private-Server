@@ -105,7 +105,7 @@ namespace DataFiles
                     NpcList.Clear();
                     if (onDebug != null) onDebug("Beginning to Load Npc Dat");
                     if (!File.Exists(file)) { if (onDebug != null)onDebug(file + " has not been found"); return false; }
-                    onDebug("Loading from " + file);
+                    if (onDebug != null) onDebug("Loading from " + file);
 
                     using (FileStream fs = new FileStream(file, FileMode.Open, FileAccess.Read))
                     {
@@ -114,7 +114,7 @@ namespace DataFiles
                         while (max >= Marshal.SizeOf(typeof(Npc)))
                         {
                             Npc i = ReadFromItems<Npc>(fs);
-
+                            DecodeNpc(ref i);
 
                             lock (m_Lock) NpcList.Add(i);
                             max -= Marshal.SizeOf(typeof(Npc));
@@ -157,6 +157,72 @@ namespace DataFiles
         }
 
         #region Decode
+
+        private void DecodeNpc(ref Npc n)
+        {
+            DecodeItem8(ref n.Type);
+            DecodeItem16(ref n.NpcID);
+            DecodeItem16(ref n.ImageNum);
+            DecodeItem16(ref n.ImageNumSmall);
+            DecodeItem32(ref n.ColorCode1);
+            DecodeItem32(ref n.ColorCode2);
+            DecodeItem32(ref n.ColorCode3);
+            DecodeItem32(ref n.ColorCode4);
+            DecodeItem8(ref n.Catchable);
+            DecodeItem8(ref n.UnknownByte2);
+            DecodeItem8(ref n.UnknownByte3);
+            DecodeItem8(ref n.Level);
+            DecodeItem32(ref n.HP);
+            DecodeItem32(ref n.SP);
+            DecodeItem16(ref n.STR);
+            DecodeItem16(ref n.CON);
+            DecodeItem16(ref n.INT);
+            DecodeItem16(ref n.WIS);
+            DecodeItem16(ref n.AGI);
+            DecodeItem8(ref n.ImageNumEnlarge);
+            DecodeItem8(ref n.element);
+            DecodeItem16(ref n.SkillID1);
+            DecodeItem16(ref n.SkillID2);
+            DecodeItem16(ref n.SkillID3);
+            DecodeItem16(ref n.ItemID1);
+            DecodeItem16(ref n.ItemID2);
+            DecodeItem16(ref n.ItemID3);
+            DecodeItem16(ref n.ItemID4);
+            DecodeItem16(ref n.ItemID5);
+            DecodeItem8(ref n.UnknownByte5);
+            DecodeItem16(ref n.UnknownWord14);
+            DecodeItem16(ref n.UnknownWord15);
+            DecodeItem16(ref n.UnknownWord16);
+            DecodeItem16(ref n.UnknownWord17);
+            DecodeItem8(ref n.GeneralAttack1);
+            DecodeItem16(ref n.UnknownWord18);
+            DecodeItem8(ref n.GeneralAttack2);
+            DecodeItem8(ref n.UnknownByte8);
+            DecodeItem16(ref n.TalkImage);
+            DecodeItem16(ref n.UnknownWord20);
+            DecodeItem16(ref n.UnknownWord21);
+            DecodeItem16(ref n.SPD);
+            DecodeItem16(ref n.GeneralAttack3);
+            DecodeItem8(ref n.UnknownByte9);
+            DecodeItem8(ref n.Transferrable);
+            DecodeItem8(ref n.PK_NPC);
+            DecodeItem16(ref n.UnknownWord24);
+            DecodeItem8(ref n.UnknownByte12);
+            DecodeItem8(ref n.NPCQuestID);
+            DecodeItem8(ref n.HumanNPC);
+            DecodeItem8(ref n.UnknownByte15);
+            DecodeItem8(ref n.HP_times2);
+            DecodeItem16(ref n.UnknownWord25);
+            DecodeItem16(ref n.Tradeable);
+            DecodeItem16(ref n.UnknownWord27);
+            DecodeItem16(ref n.UnknownWord28);
+            DecodeItem16(ref n.UnknownWord29);
+            DecodeItem32(ref n.UnknownDword2);
+            DecodeItem32(ref n.UnknownDword3);
+            DecodeItem32(ref n.UnknownDword4);
+            DecodeItem32(ref n.UnknownDword5);
+            DecodeItem32(ref n.UnknownDword6);
+        }
 
         private void DecodeItem32(ref UInt32 val)
         {

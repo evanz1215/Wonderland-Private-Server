@@ -31,6 +31,7 @@ namespace Wonderland_Private_Server.ActionCodes
         void Recv1(Player p, RecievePacket r)
         {
             ushort clickID = r.Unpack16();
+            DebugSystem.Write(DebugItemType.Info_Heavy, "AC20,1 clickID={0} from player {1}", clickID, p.CharID);
 
             var map = p.CurMap as GameMap;
             if (map != null)
@@ -51,6 +52,36 @@ namespace Wonderland_Private_Server.ActionCodes
                 {
                     questNpc.Interact(p);
                     return;
+                }
+
+                // Check if clicked NPC is a monster
+                if (p.MyBattle == null && cGlobal.gNpcManager != null)
+                {
+                    // First check map-defined monster mapping, then fall back to clickID as npcID
+                    ushort monsterNpcID = map.FindMonsterNpc(clickID);
+                    var npcData = (monsterNpcID > 0)
+                        ? cGlobal.gNpcManager.GetNpcbyID(monsterNpcID)
+                        : cGlobal.gNpcManager.GetNpcbyID(clickID);
+
+                    if (npcData != null && npcData.PK_NPC == 1) // PK_NPC: 1=monster 2=non-battle NPC
+                    {
+                        string name = "";
+                        if (npcData.NpcName != null)
+                            name = System.Text.ASCIIEncoding.ASCII.GetString(npcData.NpcName).TrimEnd('\0');
+
+                        var mob = new Game.Battle.MobFighter(
+                            npcData.NpcID, name, npcData.Level,
+                            npcData.HP, npcData.SP,
+                            npcData.STR, npcData.CON, npcData.INT, npcData.WIS, npcData.AGI, npcData.SPD,
+                            npcData.element,
+                            new ushort[] { npcData.SkillID1, npcData.SkillID2, npcData.SkillID3 },
+                            new ushort[] { npcData.ItemID1, npcData.ItemID2, npcData.ItemID3, npcData.ItemID4, npcData.ItemID5 },
+                            npcData.Catchable == 1
+                        );
+                        mob.ClickID = clickID;
+                        map.onNpcPk(p, mob);
+                        return;
+                    }
                 }
             }
 

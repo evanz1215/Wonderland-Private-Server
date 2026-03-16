@@ -118,7 +118,7 @@ namespace Game.Battle
         #endregion
 
         #region Fighter Interface
-        public uint ID { get { return m_id; } }
+        public uint ID { get { return m_npcID; } }
         public BattleRole BattlePosition { get { return m_battlePosition; } set { m_battlePosition = value; } }
         public eFighterType TypeofFighter { get { return eFighterType.Npc_Mob; } }
         public FighterState BattleState

@@ -22,7 +22,7 @@ namespace Server
     /// </summary>
     public class WorldServer:MapSystem,WorldServerHost,MapHost
     {
-        Thread Mainthrd,Eventthrd;
+        Thread Mainthrd,Eventthrd,Mapthrd;
         bool killFlag;
         readonly ManualResetEvent mylock;
         //readonly Semaphore ProcessLock,SendLock;
@@ -101,6 +101,12 @@ namespace Server
                     info.MaxSkillLevel, sd.Grade, info.SkillPattern1,
                     info.NumberOfTurns, info.UnknownByte7, info.SP);
             };
+            GameMap.GetBattleBG = (mapID) =>
+            {
+                if (cGlobal.gGameDataBase != null)
+                    return cGlobal.gGameDataBase.GetBattleBG(mapID);
+                return 140;
+            };
             killFlag = false;
             Mainthrd = new Thread(new ThreadStart(MainLoop));
             Mainthrd.Name = "World Manager Main Thread";
@@ -108,6 +114,9 @@ namespace Server
             Eventthrd = new Thread(new ThreadStart(Eventwrk));
             Eventthrd.Name = "World Manager Event Thread";
             Eventthrd.Init();
+            Mapthrd = new Thread(new ThreadStart(Mapwrk));
+            Mapthrd.Name = "World Manager Map Thread";
+            Mapthrd.Init();
         }
 
         public void Kill()
@@ -221,8 +230,8 @@ namespace Server
             do
             {               
 
-                //foreach (var map in MapList.Values.ToList())
-                //    map.UpdateMap();
+                foreach (var map in MapList.Values.ToList())
+                    map.UpdateMap();
                 Thread.Sleep(2);
             }
             while (!killFlag);
@@ -341,6 +350,7 @@ namespace Server
                 if ((tmp = base.GetMap(ID)) != null)
                 {
                     //cGlobal.gGameDataBase.SetupMap(ref tmp);
+                    PopulateMonsterNpcs(tmp);
                     if (MapList.TryAdd((ushort)tmp.MapID, tmp))
                         DebugSystem.Write(DebugItemType.Info_Heavy, "Loaded Map {0}", tmp.MapID);
                     return tmp;
@@ -373,6 +383,51 @@ namespace Server
         //    return true;
         //}
        
+        void PopulateMonsterNpcs(GameMap map)
+        {
+            ushort mapID = (ushort)map.MapID;
+            DebugSystem.Write(DebugItemType.Info_Heavy, "PopulateMonsterNpcs called for map {0}, EveMapper={1}, NpcMgr={2}",
+                mapID, cGlobal.gEveNpcMapper != null, cGlobal.gNpcManager != null);
+
+            if (cGlobal.gEveNpcMapper == null || cGlobal.gNpcManager == null) return;
+            if (!cGlobal.gEveNpcMapper.HasMap(mapID))
+            {
+                DebugSystem.Write(DebugItemType.Info_Heavy, "EveNpcMapper has no data for map {0}", mapID);
+                return;
+            }
+
+            try
+            {
+                var npcList = cGlobal.gEveNpcMapper.GetMapNpcs(mapID);
+                if (npcList == null) return;
+
+                DebugSystem.Write(DebugItemType.Info_Heavy, "Map {0}: Eve has {1} NPC entries", mapID, npcList.Count);
+
+                int count = 0;
+                foreach (var entry in npcList)
+                {
+                    var npcData = cGlobal.gNpcManager.GetNpcbyID(entry.NpcID);
+                    if (npcData != null && npcData.PK_NPC == 1) // 1 = monster, 2 = non-battle NPC
+                    {
+                        map.AddMonsterNpc(entry.ClickID, entry.NpcID);
+                        count++;
+                        DebugSystem.Write(DebugItemType.Info_Heavy, "  Monster: clickID={0} → npcID={1} PK_NPC={2}",
+                            entry.ClickID, entry.NpcID, npcData.PK_NPC);
+                    }
+                    else
+                    {
+                        DebugSystem.Write(DebugItemType.Info_Heavy, "  Skip: clickID={0} → npcID={1} npcData={2} PK_NPC={3}",
+                            entry.ClickID, entry.NpcID, npcData != null, npcData != null ? npcData.PK_NPC : -1);
+                    }
+                }
+                DebugSystem.Write(DebugItemType.Info_Heavy, "Map {0}: registered {1} monster NPCs from Eve data", mapID, count);
+            }
+            catch (Exception e)
+            {
+                DebugSystem.Write("PopulateMonsterNpcs error: " + e.Message);
+            }
+        }
+
         /// <summary>
         /// Broadcasts a packet to all
         /// </summary>

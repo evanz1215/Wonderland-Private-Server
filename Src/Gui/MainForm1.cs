@@ -19,6 +19,47 @@ namespace Wonderland_Private_Server
         bool blockclose = true;
 
         PluginManager phostManager;
+
+        // File logger for console output
+        static readonly object _logLock = new object();
+        static StreamWriter _logWriter;
+        static string _logDir = "Logs";
+        int _lastLogLength = 0;
+
+        static void InitFileLogger()
+        {
+            if (!Directory.Exists(_logDir))
+                Directory.CreateDirectory(_logDir);
+            string filename = Path.Combine(_logDir, "server_" + DateTime.Now.ToString("yyyy-MM-dd") + ".log");
+            _logWriter = new StreamWriter(filename, true, Encoding.UTF8);
+            _logWriter.AutoFlush = true;
+        }
+
+        static void WriteToLogFile(string text)
+        {
+            if (_logWriter == null) return;
+            lock (_logLock)
+            {
+                try
+                {
+                    // Add timestamp to each line
+                    string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
+                    string[] lines = text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        if (i == lines.Length - 1 && string.IsNullOrEmpty(lines[i]))
+                        {
+                            _logWriter.Write(lines[i]);
+                        }
+                        else if (!string.IsNullOrWhiteSpace(lines[i]))
+                        {
+                            _logWriter.Write("[" + timestamp + "] " + lines[i] + "\r\n");
+                        }
+                    }
+                }
+                catch { }
+            }
+        }
           
 
         public Form1()
@@ -102,8 +143,32 @@ namespace Wonderland_Private_Server
         {
 
             cGlobal.Run = true;
+            // Ensure CWD matches the exe location so relative paths (Data\, Maps\, Logs\) work correctly
+            Environment.CurrentDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            InitFileLogger();
             DebugSystem.Initialize(ref MainOutput, true);
             DebugSystem.VerboseLvl = 1;
+
+            // Hook MainOutput to mirror all console text to log file
+            this.Invoke(new Action(() =>
+            {
+                _lastLogLength = MainOutput.TextLength;
+                MainOutput.TextChanged += (s, ev) =>
+                {
+                    var tb = (RichTextBox)s;
+                    int curLen = tb.TextLength;
+                    if (curLen > _lastLogLength)
+                    {
+                        string newText = tb.Text.Substring(_lastLogLength);
+                        _lastLogLength = curLen;
+                        WriteToLogFile(newText);
+                    }
+                    else
+                    {
+                        _lastLogLength = curLen;
+                    }
+                };
+            }));
 
             DebugSystem.Write("[Init] - Initializing DataFile Objects");
             log.Info("[Init] - Initializing DataFile Objects");
@@ -135,7 +200,7 @@ namespace Wonderland_Private_Server
             cGlobal.gSkillManager = new Wonderland_Private_Server.DataManagement.DataFiles.SkillDataFile();
             //cGlobal.gCompoundDat = new DataManagement.DataFiles.cCompound2Dat();
             //cGlobal.gUserDataBase = new UserDataBase();
-            //cGlobal.gNpcManager = new DataManagement.DataFiles.NpcDat();
+            cGlobal.gNpcManager = new DataFiles.PhxNpcDat();
             
             cGlobal.SrvSettings = new Server.Config.Settings();
 
@@ -268,7 +333,33 @@ namespace Wonderland_Private_Server
             #region Load Data Files
             //cGlobal.gItemManager.LoadItems("Data\\Item.dat");
             cGlobal.gSkillManager.LoadSkills("Data\\Skill.dat");
-            //cGlobal.gNpcManager.LoadNpc("Data\\Npc.dat");
+            cGlobal.gNpcManager.onDebug = (obj) => DebugSystem.Write("[NpcDat] " + obj.ToString());
+            var npcLoadResult = cGlobal.gNpcManager.Load("Data\\Npc.dat");
+            npcLoadResult.Wait();
+            DebugSystem.Write(string.Format("Npc.dat loaded: {0} NPCs, success={1}", cGlobal.gNpcManager.NpcList.Count, npcLoadResult.Result));
+            if (cGlobal.gNpcManager.NpcList.Count > 0)
+            {
+                Server.DataFiles.NpcDecoder.DecodeAllNpcs(cGlobal.gNpcManager);
+                DebugSystem.Write(string.Format("NpcDecoder: decoded {0} NPCs", cGlobal.gNpcManager.NpcList.Count));
+            }
+            if (cGlobal.gNpcManager.NpcList.Count > 0)
+            {
+                ushort minID = ushort.MaxValue, maxID = 0;
+                foreach (var n in cGlobal.gNpcManager.NpcList)
+                {
+                    if (n.NpcID < minID) minID = n.NpcID;
+                    if (n.NpcID > maxID) maxID = n.NpcID;
+                }
+                DebugSystem.Write(string.Format("NpcDat ID range: {0} ~ {1}", minID, maxID));
+                // Check for specific IDs from Eve data on map 60000
+                foreach (ushort testID in new ushort[] { 17000, 17001, 17002, 17003, 17412 })
+                {
+                    var npc = cGlobal.gNpcManager.GetNpcbyID(testID);
+                    DebugSystem.Write(string.Format("  NpcDat lookup ID={0}: {1}", testID, npc != null ? "FOUND" : "NOT FOUND"));
+                }
+            }
+            cGlobal.gEveNpcMapper = new Server.DataFiles.EveNpcMapper();
+            cGlobal.gEveNpcMapper.Load("Data\\eve.Emg");
             //cGlobal.gEveManager.LoadFile("Data\\eve.Emg");
             //cGlobal.gCompoundDat.Load("Data\\Compound.dat");
             //cGlobal.gCompoundDat.Load("Data\\Compound2.dat", false);
@@ -366,6 +457,10 @@ namespace Wonderland_Private_Server
             if (cGlobal.Run || blockclose)
                 e.Cancel = true;
             cGlobal.Run = false;
+            if (_logWriter != null)
+            {
+                lock (_logLock) { try { _logWriter.Close(); } catch { } }
+            }
         }
         private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {

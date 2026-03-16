@@ -28,7 +28,9 @@ namespace System
         public static DataBase.GameDataBase gGameDataBase;
 
         public static DataFiles.PhxItemDat ItemDatManager;
+        public static DataFiles.PhxNpcDat gNpcManager;
         public static Wonderland_Private_Server.DataManagement.DataFiles.SkillDataFile gSkillManager;
+        public static Server.DataFiles.EveNpcMapper gEveNpcMapper;
 
         public static LoginServer gLoginServer;
         public static WorldServer gWorld;
