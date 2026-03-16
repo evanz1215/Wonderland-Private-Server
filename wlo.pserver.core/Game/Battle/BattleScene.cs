@@ -152,8 +152,13 @@ namespace Game.Battle
         public void OnNewRound()
         {
             round++;
+            // Set round end time for all fighters so ActionDone doesn't trigger prematurely
+            DateTime rdEnd = DateTime.Now.AddSeconds(20);
             foreach (Fighter f in fighterlist.ToList())
             {
+                f.RdEndTime = rdEnd;
+                f.myAction = null;
+
                 if (f.SkillEffect != null)
                     f.SkillEffect.DecreaseTurns();
 

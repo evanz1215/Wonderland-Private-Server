@@ -402,6 +402,7 @@ using Game.Maps;
                 MyBattle = battle;
                 m_battleAction = null;
                 m_skillEffect = null;
+                m_rdEndTime = DateTime.Now.AddSeconds(20);
             }
             #endregion
 

@@ -32,8 +32,16 @@ namespace Network.ActionCodes
         /// </summary>
         void Recv_BattleAction(Player r, RecievePacket p)
         {
-            if (r.MyBattle == null) return;
-            if (r.MyBattle.RoundState != eBattleRoundState.PrepState) return;
+            if (r.MyBattle == null)
+            {
+                DebugSystem.Write("[AC50] BattleAction rejected: player not in battle");
+                return;
+            }
+            if (r.MyBattle.RoundState != eBattleRoundState.PrepState)
+            {
+                DebugSystem.Write(string.Format("[AC50] BattleAction rejected: RoundState={0} (expected PrepState)", r.MyBattle.RoundState));
+                return;
+            }
 
             p.SetPtr(6); // Skip past AC header (50, 1) + size bytes
 
@@ -44,6 +52,8 @@ namespace Network.ActionCodes
             ushort skillID = p.Unpack16();
             byte unk1 = p.Unpack8();
             byte unk2 = p.Unpack8();
+
+            DebugSystem.Write(string.Format("[AC50] BattleAction: src=({0},{1}) dst=({2},{3}) skill={4}", srcX, srcY, dstX, dstY, skillID));
 
             var battle = r.MyBattle.BattleRef;
             if (battle == null) return;
