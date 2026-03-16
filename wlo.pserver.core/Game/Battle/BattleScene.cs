@@ -358,6 +358,14 @@ namespace Game.Battle
             w.PackArray(new byte[] { 50, 1 });
             w.PackArray(data);
 
+            // Debug: hex dump of raw data and full packet
+            DebugSystem.Write(string.Format("[Send_Attack] side={0} attackers={1} rawDataLen={2} rawHex={3}",
+                role, attackers.Count, data.Length,
+                BitConverter.ToString(data.Length > 64 ? data.Take(64).ToArray() : data)));
+            DebugSystem.Write(string.Format("[Send_Attack] fullPktLen={0} pktHex={1}",
+                w.Buffer.Count(),
+                BitConverter.ToString(w.Buffer.Count() > 80 ? w.Buffer.Take(80).ToArray() : w.Buffer.ToArray())));
+
             foreach (Fighter rt in fighterlist.ToList())
             {
                 if (rt.TypeofFighter == eFighterType.player && rt is Player)
@@ -372,9 +380,12 @@ namespace Game.Battle
                         p.Pack8((byte)s.GridY);
                         p.Pack8(0);
                         player.Send(p);
+                        DebugSystem.Write(string.Format("[Send_Attack] sent AC50,6 ready: grid=({0},{1}) to player {2}",
+                            s.GridX, s.GridY, player.CharID));
                     }
                     // Send attack result data (AC 50,1)
                     player.Send(w);
+                    DebugSystem.Write(string.Format("[Send_Attack] sent AC50,1 results to player {0}", player.CharID));
                 }
             }
         }

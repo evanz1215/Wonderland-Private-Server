@@ -32,6 +32,7 @@ namespace Game.Battle
 
         #region Definitions
         DateTime roundend_time;
+        DateTime _calcEndTime = DateTime.MinValue; // delay after Calculate() for client animation
 
         public Dictionary<byte, BattleScene> Side;
 
@@ -137,12 +138,23 @@ namespace Game.Battle
 
         #region Processing
 
+        static DateTime s_lastProcessLog = DateTime.MinValue;
+
         public void Process()
         {
             if (blockupdt) return;
             blockupdt = true;
             if (BattleState == eBattleState.Active)
             {
+                // Periodic state logging (max once per second)
+                if (DateTime.Now > s_lastProcessLog.AddSeconds(1))
+                {
+                    s_lastProcessLog = DateTime.Now;
+                    DebugSystem.Write(DebugItemType.Info_Heavy,
+                        "[Battle.Process] state={0} allReady={1} hasOrders={2} side2alive={3} side5alive={4}",
+                        RoundState, AllReady, HasOrders, Side[2].Total_Fighters_Alive, Side[5].Total_Fighters_Alive);
+                }
+
                 // check if each side has players that are alive
                 if (!(Side[2].Total_Fighters_Alive > 0 && Side[5].Total_Fighters_Alive > 0) && RoundState != eBattleRoundState.CalculatingState)
                 {
@@ -152,14 +164,24 @@ namespace Game.Battle
                 // check if everyone sent a command during ready round
                 if (AllReady && !HasOrders && RoundState == eBattleRoundState.ReadyState)
                     RoundState = eBattleRoundState.EndedState;
+                else if (RoundState == eBattleRoundState.EndedState && DateTime.Now < _calcEndTime)
+                {
+                    // Wait for client to finish playing attack animation
+                }
                 else if (RoundState == eBattleRoundState.EndedState && HasOrders)
                     RoundState = eBattleRoundState.ReadyState;
                 else if (RoundState == eBattleRoundState.EndedState && !HasOrders)
                     StartRound();
                 else if (roundend_time < DateTime.Now && RoundState == eBattleRoundState.PrepState || AllReady && RoundState == eBattleRoundState.PrepState)
+                {
+                    DebugSystem.Write("[Battle] PrepState → ReadyState");
                     RoundState = eBattleRoundState.ReadyState;
-                else if (AllReady && HasOrders && RoundState == eBattleRoundState.ReadyState)
+                }
+                else if (HasOrders && RoundState == eBattleRoundState.ReadyState)
+                {
+                    DebugSystem.Write("[Battle] ReadyState → Calculate()");
                     Calculate();
+                }
             }
             blockupdt = false;
         }
@@ -177,7 +199,15 @@ namespace Game.Battle
         public void PLayer_BattleAction(BattleAction data)
         {
             data.unknownbyte = 1;
-            if (Side[(byte)BattleRole.Attacking].BattleActionRecieved(data) || Side[(byte)BattleRole.Defending].BattleActionRecieved(data))
+            bool accepted = Side[(byte)BattleRole.Attacking].BattleActionRecieved(data) || Side[(byte)BattleRole.Defending].BattleActionRecieved(data);
+            DebugSystem.Write(string.Format("[Battle] PLayer_BattleAction: src=({0},{1}) dst=({2},{3}) accepted={4} skill={5}",
+                data.src != null ? data.src.GridX : (byte)0,
+                data.src != null ? data.src.GridY : (byte)0,
+                data.dst != null ? data.dst.GridX : (byte)0,
+                data.dst != null ? data.dst.GridY : (byte)0,
+                accepted,
+                data.skill != null ? data.skill.SkillID.ToString() : "null"));
+            if (accepted)
             {
                 SendPacket p = new SendPacket();
                 p.PackArray(new byte[] { 53, 5 });
@@ -188,6 +218,7 @@ namespace Game.Battle
                     gr.Send(p);
                 foreach (Player gr in Side[(byte)BattleRole.Defending].FighterList.Where(c => c is Player))
                     gr.Send(p);
+                DebugSystem.Write(string.Format("[Battle] Sent AC53,5 ready ack for ({0},{1})", data.src.GridX, data.src.GridY));
             }
         }
 
@@ -260,7 +291,10 @@ namespace Game.Battle
 
         void Calculate()
         {
+            try
+            {
             RoundState = eBattleRoundState.CalculatingState;
+            DebugSystem.Write("[Battle] Calculate() started");
             ushort skillid = 0;
             bool flee = false;
             byte dmtype = 0; //miss = 0, hpdmg = 25, spdmg = 26, debuff = 223, sealing = 221, healing = 232, buff = 225
@@ -268,7 +302,7 @@ namespace Game.Battle
             bool miss = false;
             // get list for next move which is already reordered by speed
             var e = NextAction;
-            SendPacket moveData = new SendPacket(new byte[0]);
+            SendPacket moveData = new SendPacket(); // standard header; strip first 4 bytes when extracting raw data
             List<Fighter> ppl_involved = new List<Fighter>();
 
             foreach (var q in e)
@@ -400,11 +434,25 @@ namespace Game.Battle
                     RemFighter(eBattleLeaveType.RunAway, s);
             if (ppl_involved.Count > 0)
             {
-                Side[(byte)BattleRole.Defending].Send_Attack(ppl_involved, moveData.Buffer.ToArray());
-                Side[(byte)BattleRole.Attacking].Send_Attack(ppl_involved, moveData.Buffer.ToArray());
-                Side[(byte)BattleRole.Watching].Send_Attack(ppl_involved, moveData.Buffer.ToArray());
+                DebugSystem.Write(string.Format("[Battle] Calculate() sending attack results, {0} attackers", ppl_involved.Count));
+                var rawData = moveData.Buffer.Skip(4).ToArray(); // skip 4-byte packet header
+                Side[(byte)BattleRole.Defending].Send_Attack(ppl_involved, rawData);
+                Side[(byte)BattleRole.Attacking].Send_Attack(ppl_involved, rawData);
+                Side[(byte)BattleRole.Watching].Send_Attack(ppl_involved, rawData);
             }
+            else
+            {
+                DebugSystem.Write("[Battle] Calculate() no attackers involved");
+            }
+            // Delay before next action group or new round, so client can play attack animation
+            _calcEndTime = DateTime.Now.AddSeconds(3);
             RoundState = eBattleRoundState.EndedState;
+            }
+            catch (Exception ex)
+            {
+                DebugSystem.Write(string.Format("[Battle] Calculate() EXCEPTION: {0}\nStack: {1}", ex.Message, ex.StackTrace));
+                RoundState = eBattleRoundState.EndedState;
+            }
         }
 
         #endregion
@@ -567,7 +615,7 @@ namespace Game.Battle
                         }
                     } break;
             }
-            return 0;
+            return 1.0;
         }
         bool CanFlee(byte srclvel, byte dstlevl)
         {

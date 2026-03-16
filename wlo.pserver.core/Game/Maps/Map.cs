@@ -850,11 +850,18 @@ namespace Game
         {
             foreach (var battl in Battles.Values.ToList())
             {
-                battl.Process();
-                if (battl.BattleState == eBattleState.Ended)
+                try
                 {
-                    Game.Battle.Battle removed;
-                    Battles.TryRemove(battl.BattleID, out removed);
+                    battl.Process();
+                    if (battl.BattleState == eBattleState.Ended)
+                    {
+                        Game.Battle.Battle removed;
+                        Battles.TryRemove(battl.BattleID, out removed);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DebugSystem.Write(string.Format("[Battle] UpdateMap exception: {0}\nStack: {1}", ex.Message, ex.StackTrace));
                 }
             }
         }
