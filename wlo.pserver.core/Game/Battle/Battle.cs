@@ -322,10 +322,10 @@ namespace Game.Battle
                 if (re.Count >= 1)
                 {
                     if (re.Count > 1)
-                        moveData.Pack8(28);
+                        moveData.Pack16(28);
                     else
                     {
-                        moveData.Pack8((byte)Atktype(q.skill.EffectLayer));
+                        moveData.Pack16((ushort)Atktype(q.skill.EffectLayer));
                         moveData.Pack8(q.src.GridX);
                         moveData.Pack8(q.src.GridY);
                         moveData.Pack16(skillid);
@@ -423,7 +423,7 @@ namespace Game.Battle
                         moveData.Pack8(et[2]);
                         moveData.Pack8(et[3]); //miss
                         moveData.Pack32(dmg[0]);
-                        moveData.Pack16((ushort)dmg[1]);
+                        moveData.Pack8((byte)dmg[1]);
                     }
 
                     ppl_involved.Add(q.src);
