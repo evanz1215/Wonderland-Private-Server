@@ -192,7 +192,8 @@ namespace Game.Battle
             if (m_skills.Count > 1 && s_rng.Next(100) < 40)
             {
                 // Pick a random non-basic skill
-                var usable = m_skills.Where(s => s.SkillID != 0 && s.SPCost <= m_curSP).ToList();
+                var usable = m_skills.Where(s => s.SkillID != 0 && s.SPCost <= m_curSP
+                    && s.EffectLayer != EffectLayer.Flee && s.EffectLayer != EffectLayer.Defend).ToList();
                 if (usable.Count > 0)
                 {
                     skill = usable[s_rng.Next(usable.Count)];

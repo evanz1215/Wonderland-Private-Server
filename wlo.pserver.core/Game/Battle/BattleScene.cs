@@ -281,6 +281,8 @@ namespace Game.Battle
                     var player = fighter as Player;
                     if (player != null)
                     {
+                        DebugSystem.Write(string.Format("[OnFighterLeft] Sending battle-end packets to player ID={0} exit={1}", player.ID, exit));
+
                         // Send battle end packet (AC 11,12)
                         SendPacket t = new SendPacket();
                         t.PackArray(new byte[] { 11, 12 });

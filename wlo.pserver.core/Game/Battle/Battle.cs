@@ -156,10 +156,17 @@ namespace Game.Battle
                 }
 
                 // check if each side has players that are alive
-                if (!(Side[2].Total_Fighters_Alive > 0 && Side[5].Total_Fighters_Alive > 0) && RoundState != eBattleRoundState.CalculatingState)
+                // Wait for animation delay before ending battle so client can finish playing attack animation
+                if (!(Side[2].Total_Fighters_Alive > 0 && Side[5].Total_Fighters_Alive > 0)
+                    && RoundState != eBattleRoundState.CalculatingState
+                    && DateTime.Now >= _calcEndTime)
                 {
+                    DebugSystem.Write(string.Format("[Battle] EndBattle triggered: side2alive={0} side5alive={1}",
+                        Side[2].Total_Fighters_Alive, Side[5].Total_Fighters_Alive));
                     BattleState = eBattleState.Ended;
-                    EndBattle(eBattleLeaveType.BattleFinished); return;
+                    EndBattle(eBattleLeaveType.BattleFinished);
+                    blockupdt = false;
+                    return;
                 }
                 // check if everyone sent a command during ready round
                 if (AllReady && !HasOrders && RoundState == eBattleRoundState.ReadyState)
