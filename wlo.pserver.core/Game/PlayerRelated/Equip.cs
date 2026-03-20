@@ -1250,60 +1250,58 @@ namespace Game.Code
             }
         }
 
-        public void Send8_1(bool levelup = false) //this function sets the stas according to pts
+        public void Send8_1(bool levelup = false) //this function sets the stats according to pts
         {
             lock (m_Lock)
             {
-                PacketBuilder tmp = new PacketBuilder();
-                tmp.Begin(null);
+                // BUG FIX: PacketBuilder.Add(object) silently drops SendPacket objects.
+                // FromFormat returns SendPacket (with header), so Send() each directly.
 
                 if (levelup)
                 {
-                    tmp.Add(Tools.FromFormat("bbbbl", 8, 1, 36, 1, TotalExp));
-                    tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 35, 1, Level, 0));
-                    tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 37, 1, (Level - 1), 0));
-                    tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 38, 1, SkillPoints, 0));
-                    tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 34, 1, Potential, 0));
+                    Send(Tools.FromFormat("bbbbl", 8, 1, 36, 1, TotalExp));
+                    Send(Tools.FromFormat("bbbbdd", 8, 1, 35, 1, Level, 0));
+                    Send(Tools.FromFormat("bbbbdd", 8, 1, 37, 1, (Level - 1), 0));
+                    Send(Tools.FromFormat("bbbbdd", 8, 1, 38, 1, SkillPoints, 0));
+                    Send(Tools.FromFormat("bbbbdd", 8, 1, 34, 1, Potential, 0));
                     CurHP = FullHP;
                     CurSP = FullSP;
                 }
 
                 //hp
-                tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 207, 1, EquippedMaxHP, 0));
-                tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 25, 1, (CurHP > FullHP) ? FullHP : CurHP, 0));
+                Send(Tools.FromFormat("bbbbdd", 8, 1, 207, 1, EquippedMaxHP, 0));
+                Send(Tools.FromFormat("bbbbdd", 8, 1, 25, 1, (CurHP > FullHP) ? FullHP : CurHP, 0));
                 //sp
-                tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 208, 1, EquippedMaxSP, 0));
-                tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 26, 1, (CurSP > FullSP) ? FullSP : CurSP, 0));
+                Send(Tools.FromFormat("bbbbdd", 8, 1, 208, 1, EquippedMaxSP, 0));
+                Send(Tools.FromFormat("bbbbdd", 8, 1, 26, 1, (CurSP > FullSP) ? FullSP : CurSP, 0));
                 //str
-                tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 210, 1, EquippedATK, 0));
-                tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 41, 1, FullAtk, 0));
-                if (levelup) tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 28, 1, Str, 0));
+                Send(Tools.FromFormat("bbbbdd", 8, 1, 210, 1, EquippedATK, 0));
+                Send(Tools.FromFormat("bbbbdd", 8, 1, 41, 1, FullAtk, 0));
+                if (levelup) Send(Tools.FromFormat("bbbbdd", 8, 1, 28, 1, Str, 0));
                 //con
-                tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 211, 1, EquippedDEF, 0));
-                tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 42, 1, FullDef, 0));
+                Send(Tools.FromFormat("bbbbdd", 8, 1, 211, 1, EquippedDEF, 0));
+                Send(Tools.FromFormat("bbbbdd", 8, 1, 42, 1, FullDef, 0));
                 if (levelup)
                 {
-                    tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 205, 1, FullHP, 0));
-                    tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 29, 1, Con, 0));
+                    Send(Tools.FromFormat("bbbbdd", 8, 1, 205, 1, FullHP, 0));
+                    Send(Tools.FromFormat("bbbbdd", 8, 1, 29, 1, Con, 0));
                 }
                 //spd
-                tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 214, 1, EquippedSPD, 0));
-                tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 45, 1, FullSpd, 0));
-                if (levelup) tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 30, 1, Agi, 0));
+                Send(Tools.FromFormat("bbbbdd", 8, 1, 214, 1, EquippedSPD, 0));
+                Send(Tools.FromFormat("bbbbdd", 8, 1, 45, 1, FullSpd, 0));
+                if (levelup) Send(Tools.FromFormat("bbbbdd", 8, 1, 30, 1, Agi, 0));
                 //int
-                tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 215, 1, EquippedMAT, 0));
-                tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 43, 1, FullMatk, 0));
-                if (levelup) tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 27, 1, Int, 0));
+                Send(Tools.FromFormat("bbbbdd", 8, 1, 215, 1, EquippedMAT, 0));
+                Send(Tools.FromFormat("bbbbdd", 8, 1, 43, 1, FullMatk, 0));
+                if (levelup) Send(Tools.FromFormat("bbbbdd", 8, 1, 27, 1, Int, 0));
                 //wis
-                tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 216, 1, EquippedMDF, 0));
-                tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 44, 1, FullMdef, 0));
+                Send(Tools.FromFormat("bbbbdd", 8, 1, 216, 1, EquippedMDF, 0));
+                Send(Tools.FromFormat("bbbbdd", 8, 1, 44, 1, FullMdef, 0));
                 if (levelup)
                 {
-                    tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 206, 1, FullSP, 0));
-                    tmp.Add(Tools.FromFormat("bbbbdd", 8, 1, 33, 1, Wis, 0));
+                    Send(Tools.FromFormat("bbbbdd", 8, 1, 206, 1, FullSP, 0));
+                    Send(Tools.FromFormat("bbbbdd", 8, 1, 33, 1, Wis, 0));
                 }
-                
-                Send(new SendPacket(tmp.End()));
             }
         }
 

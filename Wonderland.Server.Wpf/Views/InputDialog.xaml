@@ -1,0 +1,30 @@
+<Window x:Class="WonderlandServerWpf.Views.InputDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding ElementName=_self, Path=Tag}"
+        Width="360" Height="180"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{DynamicResource BgCardBrush}"
+        x:Name="_self">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="LabelText" Grid.Row="0" FontSize="13" Margin="0,0,0,8"
+                   Foreground="{DynamicResource FgPrimaryBrush}" />
+
+        <TextBox x:Name="InputBox" Grid.Row="1" FontSize="14" Padding="6,4" />
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="確定" Width="80" Margin="0,0,8,0" IsDefault="True"
+                    Click="OnOK" />
+            <Button Content="取消" Width="80" IsCancel="True"
+                    Style="{StaticResource GhostButton}" />
+        </StackPanel>
+    </Grid>
+</Window>

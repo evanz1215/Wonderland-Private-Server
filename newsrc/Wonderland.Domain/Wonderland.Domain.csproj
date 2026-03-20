@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Wonderland.Domain</RootNamespace>
+    <AssemblyName>Wonderland.Domain</AssemblyName>
+    <Description>Domain entities, enums, and interfaces - no external dependencies</Description>
+  </PropertyGroup>
+
+</Project>

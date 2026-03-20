@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>Wonderland.WebApi</RootNamespace>
+    <AssemblyName>Wonderland.WebApi</AssemblyName>
+    <Description>ASP.NET Core WebAPI host - REST API, SignalR hubs, and unified entry point</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Wonderland.Domain\Wonderland.Domain.csproj" />
+    <ProjectReference Include="..\Wonderland.Application\Wonderland.Application.csproj" />
+    <ProjectReference Include="..\Wonderland.Infrastructure\Wonderland.Infrastructure.csproj" />
+    <ProjectReference Include="..\Wonderland.GameServer\Wonderland.GameServer.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.*" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.*" />
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.*" />
+  </ItemGroup>
+
+</Project>

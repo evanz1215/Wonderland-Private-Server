@@ -469,6 +469,30 @@ namespace Server
             }
         }
 
+        public int MapCount
+        {
+            get { return MapList.Count; }
+        }
+
+        /// <summary>
+        /// Returns a snapshot of all online players across all maps.
+        /// </summary>
+        public List<Player> GetAllOnlinePlayers()
+        {
+            var result = new List<Player>();
+            foreach (var map in MapList.Values.ToList())
+            {
+                try
+                {
+                    var players = map.GetPlayerSnapshot();
+                    if (players != null)
+                        result.AddRange(players);
+                }
+                catch { }
+            }
+            return result;
+        }
+
         public void Broadcast(SendPacket pkt)
         {
             //foreach (var p in Players)
@@ -597,7 +621,7 @@ namespace Server
             Thread.Sleep(5);
             src.Send(Tools.FromFormat("bbb", 14, 13, 3));
             //-----Im Mall List
-            // //g.ac75.Send_1(g.gImMall_Manager.Get_75IM);
+            src.Send(Network.ActionCodes.AC75_Mall.BuildMallListPacket());
             src.Send(Tools.FromFormat("bbw", 75, 8, 0));
             SendPacket d = new SendPacket(new byte[] { 244, 68, 41, 0, 104, 1, 1, 0, 12, 44, 137, 1, 45, 137, 1, 25, 134, 1, 24, 134, 1, 22, 134, 1, 23, 134, 1, 76, 133, 1, 99, 133, 1, 100, 133, 1, 41, 133, 1, 91, 133, 1, 88, 133, 1 });
 
@@ -687,7 +711,7 @@ namespace Server
             src.Send(Tools.FromFormat("bb", 1, 11));
             src.Send(Tools.FromFormat("bbbbbb", 15, 19, 4, 6, 9, 94));
             src.Send(new SendPacket(new byte[] { 244,68,19,0,54, 89, 2, 2, 90, 2, 1, 91, 2, 1, 189, 2, 2, 190, 2, 1, 191, 2, 1 }));
-            src.Send(Tools.FromFormat("bbdddd", 35, 4, 0, 0, 0, 0));//first 0 is im
+            src.Send(Tools.FromFormat("bbdddd", 35, 4, src.UserAcc.IM, 0, 0, 0));//first dword is IM points
             src.Send(Tools.FromFormat("bbbbbb", 90, 1, 0, 2, 2, 3));
             src.Send(Tools.FromFormat("bb", 5, 4));
             //src.SetSendMode(SendMode.Normal);

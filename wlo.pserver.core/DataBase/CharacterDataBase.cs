@@ -1506,5 +1506,28 @@ namespace DataBase
 
             }
         }
+
+        /// <summary>
+        /// 查詢所有角色摘要（從 characters + stats 表）
+        /// </summary>
+        public DataTable GetAllCharacterSummaries()
+        {
+            try
+            {
+                return GetDataTable(
+                    "SELECT c.charID, c.name, c.location_map, c.location_x, c.location_y, c.gold, c.element, c.rebirth, c.job, " +
+                    "COALESCE(s_hp.StatusUp, 0) AS curHP, " +
+                    "COALESCE(s_exp.StatusUp, 0) AS totalExp " +
+                    "FROM characters c " +
+                    "LEFT JOIN stats s_hp ON c.charID = s_hp.charID AND s_hp.statID = 25 " +
+                    "LEFT JOIN stats s_exp ON c.charID = s_exp.charID AND s_exp.statID = 36 " +
+                    "ORDER BY c.charID");
+            }
+            catch (MySqlException ex)
+            {
+                DebugSystem.Write(new ExceptionData(ex));
+                return null;
+            }
+        }
     }
 }

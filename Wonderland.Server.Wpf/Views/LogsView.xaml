@@ -1,0 +1,59 @@
+<UserControl x:Class="WonderlandServerWpf.Views.LogsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:helpers="clr-namespace:WonderlandServerWpf.Helpers"
+             prism:ViewModelLocator.AutoWireViewModel="True">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Page Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="即時日誌" FontSize="22" FontWeight="Bold" />
+            <TextBlock Text="查看系統、網路與錯誤日誌" FontSize="13"
+                       Foreground="{DynamicResource FgMutedBrush}" Margin="0,4,0,0" />
+        </StackPanel>
+
+        <!-- Log Tabs -->
+        <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedLogTab}">
+            <!-- System Log -->
+            <TabItem Header="系統日誌">
+                <TextBox Style="{StaticResource ConsoleTextBox}" Margin="0,12,0,0"
+                         Text="{Binding SystemLogText, Mode=OneWay}"
+                         helpers:TextBoxHelper.AutoScrollToEnd="True" />
+            </TabItem>
+
+            <!-- Network Log -->
+            <TabItem Header="網路日誌">
+                <TextBox Style="{StaticResource ConsoleTextBox}" Margin="0,12,0,0"
+                         Text="{Binding NetworkLogText, Mode=OneWay}"
+                         helpers:TextBoxHelper.AutoScrollToEnd="True" />
+            </TabItem>
+
+            <!-- Error Log -->
+            <TabItem Header="錯誤日誌">
+                <TextBox Margin="0,12,0,0"
+                         Text="{Binding ErrorLogText, Mode=OneWay}"
+                         IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                         VerticalScrollBarVisibility="Auto"
+                         FontFamily="Cascadia Code, Consolas, Courier New"
+                         FontSize="12" Padding="12,8"
+                         Background="#1A0A0A" Foreground="#FF6B6B"
+                         BorderThickness="0"
+                         helpers:TextBoxHelper.AutoScrollToEnd="True">
+                    <TextBox.Template>
+                        <ControlTemplate TargetType="TextBox">
+                            <Border Background="{TemplateBinding Background}"
+                                    CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                <ScrollViewer x:Name="PART_ContentHost" Focusable="False" />
+                            </Border>
+                        </ControlTemplate>
+                    </TextBox.Template>
+                </TextBox>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

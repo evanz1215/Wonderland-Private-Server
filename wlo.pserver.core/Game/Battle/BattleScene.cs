@@ -152,10 +152,13 @@ namespace Game.Battle
         public void OnNewRound()
         {
             round++;
+            DebugSystem.Write(string.Format("[OnNewRound] side={0} round={1} fighters={2}", role, round, fighterlist.Count));
             // Set round end time for all fighters so ActionDone doesn't trigger prematurely
             DateTime rdEnd = DateTime.Now.AddSeconds(20);
             foreach (Fighter f in fighterlist.ToList())
             {
+                try
+                {
                 f.RdEndTime = rdEnd;
                 f.myAction = null;
 
@@ -207,6 +210,13 @@ namespace Game.Battle
                     SendPacket p = new SendPacket();
                     p.PackArray(new byte[] { 52, 1 });
                     player.Send(p);
+                    DebugSystem.Write(string.Format("[OnNewRound] Sent AC52,1 round start to CharID={0}", player.CharID));
+                }
+                }
+                catch (Exception ex)
+                {
+                    DebugSystem.Write(string.Format("[OnNewRound] ERROR processing fighter ID={0}: {1}\n{2}",
+                        f.ID, ex.Message, ex.StackTrace));
                 }
             }
 
@@ -281,17 +291,8 @@ namespace Game.Battle
                     var player = fighter as Player;
                     if (player != null)
                     {
-                        DebugSystem.Write(string.Format("[OnFighterLeft] Sending battle-end packets to player ID={0} exit={1}", player.ID, exit));
-
-                        // Send battle end packet (AC 11,12)
-                        SendPacket t = new SendPacket();
-                        t.PackArray(new byte[] { 11, 12 });
-                        if (fighter == src.startedby)
-                            t.Pack8(1);
-                        else
-                            t.Pack8(2);
-                        t.Pack8(0);
-                        player.Send(t);
+                        DebugSystem.Write(string.Format("[OnFighterLeft] Player CharID={0} CharName={1} exit={2} MyBattle={3} BattlePos={4}",
+                            player.CharID, player.CharName, exit, player.MyBattle != null ? "set" : "null", player.BattlePosition));
 
                         // Restore HP if alive
                         if (player.CurHP == 0)
@@ -300,37 +301,102 @@ namespace Game.Battle
                             player.CurHP = 1;
                         }
 
-                        // Process rewards on battle finish
-                        if (exit == eBattleLeaveType.BattleFinished && !defeat)
+                        // Process rewards on battle finish (wrapped in try/catch to never block exit)
+                        try
                         {
-                            DistributeRewards(src, player);
+                            if (exit == eBattleLeaveType.BattleFinished && !defeat)
+                            {
+                                DistributeRewards(src, player);
+                                DebugSystem.Write(string.Format("[OnFighterLeft] Rewards distributed for CharID={0}", player.CharID));
+                            }
+                            else if (defeat)
+                            {
+                                int expLoss = (int)Math.Round(player.CurExp * 0.06);
+                                if (player.CurExp - expLoss > 0)
+                                    player.CurExp -= expLoss;
+                            }
                         }
-                        else if (defeat)
+                        catch (Exception rewardEx)
                         {
-                            // Lose 6% of current EXP on defeat
-                            int expLoss = (int)Math.Round(player.CurExp * 0.06);
-                            if (player.CurExp - expLoss > 0)
-                                player.CurExp -= expLoss;
+                            DebugSystem.Write(string.Format("[OnFighterLeft] ERROR in rewards for CharID={0}: {1}\n{2}",
+                                player.CharID, rewardEx.Message, rewardEx.StackTrace));
                         }
 
-                        // Send battle leave notification (AC 11,0)
-                        SendPacket p = new SendPacket();
-                        p.PackArray(new byte[] { 11, 0 });
-                        p.Pack32(fighter.ID);
-                        p.Pack32(0);
-                        if (player.CurMap != null)
-                            player.CurMap.Broadcast(p);
+                        // Send updated stats to client after rewards (AC 8,1)
+                        // Client needs to see stat changes before accepting exit
+                        try
+                        {
+                            player.Send8_1();
+                            DebugSystem.Write(string.Format("[OnFighterLeft] Sent Send8_1 stat update CharID={0}", player.CharID));
+                        }
+                        catch (Exception statEx)
+                        {
+                            DebugSystem.Write(string.Format("[OnFighterLeft] ERROR sending stats CharID={0}: {1}",
+                                player.CharID, statEx.Message));
+                        }
 
-                        // Send fighter removed (AC 11,1)
-                        p = new SendPacket();
-                        p.PackArray(new byte[] { 11, 1 });
-                        p.Pack8((byte)fighter.GridX);
-                        p.Pack8((byte)fighter.GridY);
-                        p.Pack8(0);
-                        player.Send(p);
+                        // === CRITICAL: Battle exit sequence ===
+                        // Reference RemFighter: Send_12(1or2) → Send_12(2) → AC 11,0 broadcast → Send_1(0)
+                        // Send_12 has copy-paste bug: Header(11,10) not Header(11,12)
+                        // ATTEMPT 10: Fix entry order (AC 11,10 before AC 11,5) + full exit sequence
+                        try
+                        {
+                            // --- Step 1: AC 11,10 + Pack8(1) — battle finished signal (starter path) ---
+                            {
+                                SendPacket exitFirst = new SendPacket();
+                                exitFirst.PackArray(new byte[] { 11, 10 });
+                                exitFirst.Pack8(1);
+                                player.Send(exitFirst);
+                                DebugSystem.Write(string.Format("[OnFighterLeft] Sent AC11,10+1 (battle finished) CharID={0}", player.CharID));
+                            }
 
-                        // Clear battle reference
+                            // --- Step 2: AC 11,10 + Pack8(2) — exit battle mode ---
+                            {
+                                SendPacket exitSignal = new SendPacket();
+                                exitSignal.PackArray(new byte[] { 11, 10 });
+                                exitSignal.Pack8(2);
+                                player.Send(exitSignal);
+                                DebugSystem.Write(string.Format("[OnFighterLeft] Sent AC11,10+2 (exit battle) CharID={0}", player.CharID));
+                            }
+
+                            // --- Step 3: AC 11,0 — battle status broadcast ---
+                            {
+                                SendPacket statusPkt = new SendPacket();
+                                statusPkt.PackArray(new byte[] { 11, 0 });
+                                statusPkt.Pack32(player.CharID);
+                                statusPkt.Pack16(0);
+                                if (player.CurMap != null)
+                                    player.CurMap.Broadcast(statusPkt);
+                                else
+                                    player.Send(statusPkt);
+                                DebugSystem.Write(string.Format("[OnFighterLeft] Sent AC11,0 (status) CharID={0}", player.CharID));
+                            }
+
+                            // --- Step 4: AC 11,1 — grid removal for player fighter ---
+                            {
+                                SendPacket gridRemove = new SendPacket();
+                                gridRemove.PackArray(new byte[] { 11, 1 });
+                                gridRemove.Pack8((byte)fighter.GridX);
+                                gridRemove.Pack8((byte)fighter.GridY);
+                                gridRemove.Pack8(0);
+                                player.Send(gridRemove);
+                                DebugSystem.Write(string.Format("[OnFighterLeft] Sent AC11,1 grid({0},{1}) CharID={2}",
+                                    fighter.GridX, fighter.GridY, player.CharID));
+                            }
+
+                            DebugSystem.Write(string.Format("[OnFighterLeft] Exit sequence complete CharID={0}", player.CharID));
+                        }
+                        catch (Exception sendEx)
+                        {
+                            DebugSystem.Write(string.Format("[OnFighterLeft] ERROR sending exit packets CharID={0}: {1}\n{2}",
+                                player.CharID, sendEx.Message, sendEx.StackTrace));
+                        }
+
+                        // Clear server-side battle state — ALWAYS execute regardless of above errors
                         player.MyBattle = null;
+                        player.BattlePosition = BattleRole.none;
+                        DebugSystem.Write(string.Format("[OnFighterLeft] CLEANUP DONE CharID={0} MyBattle={1} BattlePos={2}",
+                            player.CharID, player.MyBattle == null ? "null" : "SET", player.BattlePosition));
                     }
                 }
                 fighterlist.Remove(fighter);
@@ -485,7 +551,7 @@ namespace Game.Battle
                 uint boostedExp = (uint)(expShare * teamBonus);
 
                 // Award full boosted exp to battle participant
-                player.CurExp = (int)boostedExp;
+                player.CurExp += (int)boostedExp;
 
                 // Award 30% share to team members on same map but not in this battle
                 uint teamShare = (uint)(expShare * 0.30);
@@ -497,14 +563,14 @@ namespace Game.Battle
                         if (member.CurMap == null || player.CurMap == null) continue;
                         if (member.CurMap.MapID != player.CurMap.MapID) continue;
 
-                        member.CurExp = (int)teamShare;
+                        member.CurExp += (int)teamShare;
                     }
                 }
             }
             else if (expShare > 0)
             {
                 // Solo player — award exp directly
-                player.CurExp = (int)expShare;
+                player.CurExp += (int)expShare;
             }
 
             // Award pet EXP (battle pet gets 80% of player's share)

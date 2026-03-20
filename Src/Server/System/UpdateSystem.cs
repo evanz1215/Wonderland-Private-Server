@@ -123,7 +123,7 @@ namespace Server.System
             {
                 case "Wonderland-Private-Server":
                     {
-
+                        if (MainFrm == null || AppUpdtPanel == null) break;
                         MainFrm.BeginInvoke(new Action(() =>
                         {
                             AppUpdtPanel.SuspendLayout();

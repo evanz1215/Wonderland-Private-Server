@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/Wonderland.Application.Tests/Wonderland.Application.Tests.csproj" />
+    <Project Path="tests/Wonderland.Domain.Tests/Wonderland.Domain.Tests.csproj" />
+    <Project Path="tests/Wonderland.WebApi.Tests/Wonderland.WebApi.Tests.csproj" />
+  </Folder>
+  <Project Path="Wonderland.Application/Wonderland.Application.csproj" />
+  <Project Path="Wonderland.Domain/Wonderland.Domain.csproj" />
+  <Project Path="Wonderland.GameServer/Wonderland.GameServer.csproj" />
+  <Project Path="Wonderland.Infrastructure/Wonderland.Infrastructure.csproj" />
+  <Project Path="Wonderland.WebApi/Wonderland.WebApi.csproj" />
+</Solution>

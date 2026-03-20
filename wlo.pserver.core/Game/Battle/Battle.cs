@@ -57,6 +57,7 @@ namespace Game.Battle
         public Battle(UInt16 BG,int BattleID)
         {
             Background = BG;
+            battleID = (UInt16)BattleID;
             Side = new Dictionary<byte, BattleScene>();
             Side.Add(2, new BattleScene((BattleRole)2, this));
             Side.Add(4, new BattleScene((BattleRole)4, this));
@@ -144,15 +145,17 @@ namespace Game.Battle
         {
             if (blockupdt) return;
             blockupdt = true;
+            try
+            {
             if (BattleState == eBattleState.Active)
             {
                 // Periodic state logging (max once per second)
                 if (DateTime.Now > s_lastProcessLog.AddSeconds(1))
                 {
                     s_lastProcessLog = DateTime.Now;
-                    DebugSystem.Write(DebugItemType.Info_Heavy,
+                    DebugSystem.Write(string.Format(
                         "[Battle.Process] state={0} allReady={1} hasOrders={2} side2alive={3} side5alive={4}",
-                        RoundState, AllReady, HasOrders, Side[2].Total_Fighters_Alive, Side[5].Total_Fighters_Alive);
+                        RoundState, AllReady, HasOrders, Side[2].Total_Fighters_Alive, Side[5].Total_Fighters_Alive));
                 }
 
                 // check if each side has players that are alive
@@ -176,9 +179,15 @@ namespace Game.Battle
                     // Wait for client to finish playing attack animation
                 }
                 else if (RoundState == eBattleRoundState.EndedState && HasOrders)
+                {
+                    DebugSystem.Write("[Battle] EndedState → ReadyState (more orders)");
                     RoundState = eBattleRoundState.ReadyState;
+                }
                 else if (RoundState == eBattleRoundState.EndedState && !HasOrders)
+                {
+                    DebugSystem.Write("[Battle] EndedState → StartRound (no more orders)");
                     StartRound();
+                }
                 else if (roundend_time < DateTime.Now && RoundState == eBattleRoundState.PrepState || AllReady && RoundState == eBattleRoundState.PrepState)
                 {
                     DebugSystem.Write("[Battle] PrepState → ReadyState");
@@ -190,12 +199,22 @@ namespace Game.Battle
                     Calculate();
                 }
             }
-            blockupdt = false;
+            }
+            catch (Exception ex)
+            {
+                DebugSystem.Write(string.Format("[Battle.Process] EXCEPTION: {0}\nStack: {1}", ex.Message, ex.StackTrace));
+            }
+            finally
+            {
+                blockupdt = false;
+            }
         }
 
         //Send StartRd info
         public void StartRound()
         {
+            DebugSystem.Write(string.Format("[Battle] StartRound: side2alive={0} side5alive={1}",
+                Side[2].Total_Fighters_Alive, Side[5].Total_Fighters_Alive));
             RoundState = eBattleRoundState.PrepState;
             roundend_time = DateTime.Now.AddSeconds(20);
             Side[2].OnNewRound();
@@ -254,11 +273,12 @@ namespace Game.Battle
                 {
                     fighter.Send8_1();
                     Send_11_250(Background, Side[2].FighterList.ToList(), fighter);
-                    Send_11_5(fighter);
+                    // Reference order: AC 11,10 (enter battle) BEFORE AC 11,5 (fighter details)
                     SendPacket p = new SendPacket();
                     p.PackArray(new byte[] { 11, 10 });
-                    p.Pack32(1);
+                    p.Pack8(1); // Enter battle mode (must be Pack8, not Pack32)
                     fighter.Send(p);
+                    Send_11_5(fighter);
                 }
             }
             foreach (Player fighter in Side[5].FighterList.Where(c => c is Player))
@@ -267,11 +287,12 @@ namespace Game.Battle
                 {
                     fighter.Send8_1();
                     Send_11_250(Background, Side[5].FighterList.ToList(), fighter);
-                    Send_11_5(fighter);
+                    // Reference order: AC 11,10 (enter battle) BEFORE AC 11,5 (fighter details)
                     SendPacket p = new SendPacket();
                     p.PackArray(new byte[] { 11, 10 });
-                    p.Pack32(1);
+                    p.Pack8(1); // Enter battle mode (must be Pack8, not Pack32)
                     fighter.Send(p);
+                    Send_11_5(fighter);
                 }
             }
             BattleState = eBattleState.Active;
@@ -280,14 +301,42 @@ namespace Game.Battle
         public void EndBattle(eBattleLeaveType t)
         {
             BattleState = eBattleState.Ended;
-            // Notify all fighters on all sides
+            DebugSystem.Write(string.Format("[EndBattle] type={0} battleID={1}", t, battleID));
+            // Only process player fighters — reference server skips mobs/pets in EndBattle
             foreach (var side in Side.Values)
             {
-                foreach (Fighter f in side.FighterList.ToList())
+                var fighters = side.FighterList.ToList();
+                DebugSystem.Write(string.Format("[EndBattle] Side fighters={0}, players={1}",
+                    fighters.Count, fighters.Count(f => f.TypeofFighter == eFighterType.player)));
+                foreach (Fighter f in fighters)
                 {
-                    side.OnFighterLeft(this, f.BattlePosition, t, f);
+                    if (f.TypeofFighter == eFighterType.player)
+                    {
+                        try
+                        {
+                            DebugSystem.Write(string.Format("[EndBattle] Calling OnFighterLeft for player ID={0} pos={1}", f.ID, f.BattlePosition));
+                            side.OnFighterLeft(this, f.BattlePosition, t, f);
+                        }
+                        catch (Exception ex)
+                        {
+                            DebugSystem.Write(string.Format("[EndBattle] ERROR in OnFighterLeft for player ID={0}: {1}\n{2}", f.ID, ex.Message, ex.StackTrace));
+                            // Force cleanup even if OnFighterLeft failed
+                            try
+                            {
+                                var p = f as Player;
+                                if (p != null)
+                                {
+                                    p.MyBattle = null;
+                                    p.BattlePosition = BattleRole.none;
+                                    DebugSystem.Write(string.Format("[EndBattle] Force cleanup for player ID={0}", f.ID));
+                                }
+                            }
+                            catch { }
+                        }
+                    }
                 }
             }
+            DebugSystem.Write("[EndBattle] Complete");
         }
 
         #endregion
@@ -328,17 +377,13 @@ namespace Game.Battle
 
                 if (re.Count >= 1)
                 {
-                    if (re.Count > 1)
-                        moveData.Pack16(28);
-                    else
-                    {
-                        moveData.Pack16((ushort)Atktype(q.skill.EffectLayer));
-                        moveData.Pack8(q.src.GridX);
-                        moveData.Pack8(q.src.GridY);
-                        moveData.Pack16(skillid);
-                        moveData.Pack8(0); // affected by poison? switch to 1
-                        moveData.Pack8((byte)re.Count);
-                    }
+                    // Pack attack header: atkType(2) + srcGrid(2) + skillID(2) + poison(1) + targetCount(1)
+                    moveData.Pack16(re.Count > 1 ? (ushort)28 : (ushort)Atktype(q.skill.EffectLayer));
+                    moveData.Pack8(q.src.GridX);
+                    moveData.Pack8(q.src.GridY);
+                    moveData.Pack16(skillid);
+                    moveData.Pack8(0); // affected by poison? switch to 1
+                    moveData.Pack8((byte)re.Count);
 
                     foreach (var y in re)
                     {
@@ -471,11 +516,12 @@ namespace Game.Battle
             if (f.TypeofFighter == eFighterType.player)
             {
                 Send_11_250(Background, Side[(byte)f.BattlePosition].FighterList.ToList(), (Player)f);
-                Send_11_5((Player)f);
+                // Reference order: AC 11,10 (enter battle) BEFORE AC 11,5 (fighter details)
                 SendPacket p = new SendPacket();
                 p.PackArray(new byte[] { 11, 10 });
-                p.Pack32(1);
+                p.Pack8(1);
                 ((Player)f).Send(p);
+                Send_11_5((Player)f);
             }
         }
         //Watching Battle
@@ -486,7 +532,7 @@ namespace Game.Battle
             Send_11_250(Background, Side[4].FighterList.ToList(), (Player)f);
             SendPacket p = new SendPacket();
             p.PackArray(new byte[] { 11, 10 });
-            p.Pack32(1);
+            p.Pack8(1);
             ((Player)f).Send(p);
         }
 

@@ -1,0 +1,22 @@
+# Development override — only runs PostgreSQL
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up postgres
+#
+# For local development:
+#   1. Start only the database: docker compose -f docker-compose.dev.yml up -d
+#   2. Run the server locally:  dotnet run --project Wonderland.WebApi
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: wonderland-db-dev
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: wonderland_dev
+      POSTGRES_USER: wonderland
+      POSTGRES_PASSWORD: wonderland_dev
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_dev_data:
+    driver: local

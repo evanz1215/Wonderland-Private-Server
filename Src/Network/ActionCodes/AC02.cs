@@ -366,6 +366,66 @@ namespace Network.ActionCodes
                                     SendSystemMessage(r, "Usage: :event [exp|drop|status] [minutes]");
                             } break;
                         #endregion
+                        #region im
+                        case ":im":
+                            {
+                                // :im add 1000           — add IM to self
+                                // :im set 5000           — set own IM to value
+                                // :im [player] add 1000  — add IM to target player
+                                // :im [player] set 5000  — set target IM to value
+                                if (words.Length >= 3)
+                                {
+                                    try
+                                    {
+                                        Player target = r;
+                                        string action;
+                                        int amount;
+
+                                        // Check if second word is a player name or action
+                                        if (words[1] == "add" || words[1] == "set")
+                                        {
+                                            action = words[1];
+                                            amount = int.Parse(words[2]);
+                                        }
+                                        else if (words.Length >= 4)
+                                        {
+                                            target = cGlobal.gWorld.FindPlayerByName(words[1]);
+                                            if (target == null)
+                                            {
+                                                SendSystemMessage(r, "Player not found: " + words[1]);
+                                                break;
+                                            }
+                                            action = words[2];
+                                            amount = int.Parse(words[3]);
+                                        }
+                                        else
+                                        {
+                                            SendSystemMessage(r, "Usage: :im [add|set] amount  OR  :im [player] [add|set] amount");
+                                            break;
+                                        }
+
+                                        if (action == "add")
+                                            target.UserAcc.IM += amount;
+                                        else if (action == "set")
+                                            target.UserAcc.IM = amount;
+
+                                        if (target.UserAcc.IM < 0) target.UserAcc.IM = 0;
+
+                                        // Update database
+                                        cGlobal.gUserDataBase.UpdateUser(target.UserAcc.DataBaseID, im: target.UserAcc.IM);
+
+                                        // Send updated IM to client (AC 35,4)
+                                        target.Send(Tools.FromFormat("bbdddd", 35, 4, target.UserAcc.IM, 0, 0, 0));
+
+                                        string targetName = (target == r) ? "your" : target.CharName + "'s";
+                                        SendSystemMessage(r, "Set " + targetName + " IM to " + target.UserAcc.IM);
+                                    }
+                                    catch { SendSystemMessage(r, "Usage: :im [add|set] amount  OR  :im [player] [add|set] amount"); }
+                                }
+                                else
+                                    SendSystemMessage(r, "Usage: :im [add|set] amount  OR  :im [player] [add|set] amount");
+                            } break;
+                        #endregion
                         #region exp
                         case ":exp":
                             {

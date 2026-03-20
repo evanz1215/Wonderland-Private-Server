@@ -155,6 +155,13 @@
     <Compile Include="Src\Network\ActionCodes\AC11_Battle.cs" />
     <Compile Include="Src\Network\ActionCodes\AC63.cs" />
     <Compile Include="Src\Network\ActionCodes\AC85.cs" />
+    <Compile Include="Src\Network\ActionCodes\AC75_Mall.cs" />
+    <Compile Include="Src\Server\ImMallManager.cs" />
+    <Compile Include="Src\Server\LotteryManager.cs" />
+    <Compile Include="Src\Network\ActionCodes\AC34_Lottery.cs" />
+    <Compile Include="Src\Network\ActionCodes\AC05.cs" />
+    <Compile Include="Src\Network\ActionCodes\AC104.cs" />
+    <Compile Include="Src\Gui\ImMallPanel.cs" />
     <Compile Include="Src\Network\ActionCodes\AC86_Reborn.cs" />
     <Compile Include="Src\Network\Client.cs" />
     <Compile Include="Src\Program.cs" />

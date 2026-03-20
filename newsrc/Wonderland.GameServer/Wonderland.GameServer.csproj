@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Wonderland.GameServer</RootNamespace>
+    <AssemblyName>Wonderland.GameServer</AssemblyName>
+    <Description>Game server engine - game loop, world management, and subsystems</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Wonderland.Domain\Wonderland.Domain.csproj" />
+    <ProjectReference Include="..\Wonderland.Application\Wonderland.Application.csproj" />
+    <ProjectReference Include="..\Wonderland.Infrastructure\Wonderland.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.*" />
+  </ItemGroup>
+
+</Project>

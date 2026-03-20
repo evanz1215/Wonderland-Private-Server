@@ -1,0 +1,111 @@
+<Window x:Class="WonderlandServerWpf.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:prism="http://prismlibrary.com/"
+        xmlns:views="clr-namespace:WonderlandServerWpf.Views"
+        xmlns:converters="clr-namespace:WonderlandServerWpf.Converters"
+        prism:ViewModelLocator.AutoWireViewModel="True"
+        Title="Wonderland Online Private Server"
+        Width="1920" Height="1080"
+        WindowState="Maximized"
+        Background="{DynamicResource BgDarkBrush}">
+    <Window.Resources>
+        <converters:IndexToVisibilityConverter x:Key="IdxToVis" />
+    </Window.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ═══ Sidebar ═══ -->
+        <Border Grid.Column="0" Background="{DynamicResource BgMediumBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <!-- Logo -->
+                <StackPanel DockPanel.Dock="Top" Margin="20,24,20,32">
+                    <TextBlock Text="WLO" FontSize="28" FontWeight="Bold"
+                               Foreground="{DynamicResource PrimaryLightBrush}" />
+                    <TextBlock Text="Private Server" FontSize="12"
+                               Foreground="{DynamicResource FgMutedBrush}" Margin="2,2,0,0" />
+                </StackPanel>
+
+                <!-- Server Status -->
+                <Border DockPanel.Dock="Bottom" Margin="16,0,16,16" Padding="12,10"
+                        Background="{DynamicResource BgCardBrush}" CornerRadius="8">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" Fill="{DynamicResource SuccessBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <TextBlock Text="伺服器運行中" FontSize="12" Foreground="{DynamicResource FgSecondaryBrush}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding StatusText}" FontSize="11"
+                                   Foreground="{DynamicResource FgMutedBrush}" Margin="16,4,0,0"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Navigation -->
+                <StackPanel>
+                    <TextBlock Text="主要功能" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{DynamicResource FgMutedBrush}" Margin="20,0,0,8" />
+
+                    <ListBox Style="{StaticResource NavListBox}"
+                             ItemContainerStyle="{StaticResource NavListBoxItem}"
+                             SelectedIndex="{Binding SelectedNavIndex, Mode=TwoWay}">
+                        <ListBoxItem Content="&#x2302;  系統總覽" />
+                        <ListBoxItem Content="&#x2261;  即時日誌" />
+                        <ListBoxItem Content="&#x2609;  玩家列表" />
+                        <ListBoxItem Content="&#x2699;  管理面板" />
+                    </ListBox>
+
+                    <TextBlock Text="設定" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{DynamicResource FgMutedBrush}" Margin="20,24,0,8" />
+
+                    <ListBox Style="{StaticResource NavListBox}"
+                             ItemContainerStyle="{StaticResource NavListBoxItem}"
+                             SelectedIndex="{Binding SelectedSettingsIndex, Mode=TwoWay}">
+                        <ListBoxItem Content="&#x2630;  伺服器設定" />
+                        <ListBoxItem Content="&#x21BB;  更新管理" />
+                        <ListBoxItem Content="&#x2606;  商城管理" />
+                    </ListBox>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ═══ Content Area ═══ -->
+        <Border Grid.Column="1" Padding="24,20">
+            <ContentControl>
+                <ContentControl.Style>
+                    <Style TargetType="ContentControl">
+                        <Setter Property="Content">
+                            <Setter.Value><views:SystemView /></Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ActivePageIndex}" Value="0">
+                                <Setter Property="Content"><Setter.Value><views:SystemView /></Setter.Value></Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding ActivePageIndex}" Value="1">
+                                <Setter Property="Content"><Setter.Value><views:LogsView /></Setter.Value></Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding ActivePageIndex}" Value="2">
+                                <Setter Property="Content"><Setter.Value><views:OnlineUsersView /></Setter.Value></Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding ActivePageIndex}" Value="3">
+                                <Setter Property="Content"><Setter.Value><views:AdminView /></Setter.Value></Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding ActivePageIndex}" Value="4">
+                                <Setter Property="Content"><Setter.Value><views:ConfigurationView /></Setter.Value></Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding ActivePageIndex}" Value="5">
+                                <Setter Property="Content"><Setter.Value><views:UpdateView /></Setter.Value></Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding ActivePageIndex}" Value="6">
+                                <Setter Property="Content"><Setter.Value><views:ItemMallView /></Setter.Value></Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ContentControl.Style>
+            </ContentControl>
+        </Border>
+    </Grid>
+</Window>

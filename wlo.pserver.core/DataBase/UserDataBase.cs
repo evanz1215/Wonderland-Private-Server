@@ -158,14 +158,15 @@ namespace DataBase
         {
             if (user == 0) return false;
 
-            Dictionary<string, string> str = new Dictionary<string, string>();
+            var str = new Dictionary<string, object>();
             if (delete != null) str.Add(Char_Delete_Code_Ref, delete);
             if (im != null) str.Add(IM_Ref, im.ToString());
             if (char1 != null) str.Add(CharacterID1_Ref, char1.ToString());
             if (char2 != null) str.Add(CharacterID2_Ref, char2.ToString());
 
-            //try { Update(TableName, str, UserID_Ref + " = '" + user + "'"); }
-            //catch (MySqlException ex) { DebugSystem.Write(new ExceptionData(ex)); return false; }
+            if (str.Count == 0) return true;
+            try { Update(TableName, str, DataBaseID_Ref + " = '" + user + "'"); }
+            catch (MySqlException ex) { DebugSystem.Write(new ExceptionData(ex)); return false; }
 
             return true;
         }

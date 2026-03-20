@@ -1,0 +1,117 @@
+<UserControl x:Class="WonderlandServerWpf.Views.SystemView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:helpers="clr-namespace:WonderlandServerWpf.Helpers"
+             prism:ViewModelLocator.AutoWireViewModel="True">
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- Page Header -->
+            <RowDefinition Height="Auto" />
+            <!-- Stat Cards -->
+            <RowDefinition Height="Auto" />
+            <!-- Content Tabs -->
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Page Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="系統總覽" FontSize="22" FontWeight="Bold" />
+            <TextBlock Text="監控伺服器狀態與即時輸出" FontSize="13"
+                       Foreground="{DynamicResource FgMutedBrush}" Margin="0,4,0,0" />
+        </StackPanel>
+
+        <!-- Stat Cards Row -->
+        <UniformGrid Grid.Row="1" Columns="5" Margin="0,0,0,20">
+            <!-- Players Online -->
+            <Border Style="{StaticResource Card}" Margin="0,0,12,0">
+                <StackPanel>
+                    <TextBlock Text="{Binding PlayersOnlineCount}" Style="{StaticResource StatValue}"
+                               Foreground="{DynamicResource AccentBrush}" />
+                    <TextBlock Text="線上玩家" Style="{StaticResource StatLabel}" />
+                </StackPanel>
+            </Border>
+            <!-- Players Idle -->
+            <Border Style="{StaticResource Card}" Margin="0,0,12,0">
+                <StackPanel>
+                    <TextBlock Text="{Binding PlayersIdleCount}" Style="{StaticResource StatValue}"
+                               Foreground="{DynamicResource WarningBrush}" />
+                    <TextBlock Text="閒置玩家" Style="{StaticResource StatLabel}" />
+                </StackPanel>
+            </Border>
+            <!-- Maps Loaded -->
+            <Border Style="{StaticResource Card}" Margin="0,0,12,0">
+                <StackPanel>
+                    <TextBlock Text="{Binding MapsLoadedCount}" Style="{StaticResource StatValue}"
+                               Foreground="{DynamicResource PrimaryLightBrush}" />
+                    <TextBlock Text="已載入地圖" Style="{StaticResource StatLabel}" />
+                </StackPanel>
+            </Border>
+            <!-- Maps Idle -->
+            <Border Style="{StaticResource Card}" Margin="0,0,12,0">
+                <StackPanel>
+                    <TextBlock Text="{Binding MapsIdleCount}" Style="{StaticResource StatValue}" />
+                    <TextBlock Text="閒置地圖" Style="{StaticResource StatLabel}" />
+                </StackPanel>
+            </Border>
+            <!-- Threads -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="{Binding ThreadCount}" Style="{StaticResource StatValue}"
+                               Foreground="{DynamicResource SuccessBrush}" />
+                    <TextBlock Text="執行緒" Style="{StaticResource StatLabel}" />
+                </StackPanel>
+            </Border>
+        </UniformGrid>
+
+        <!-- Content Area -->
+        <TabControl Grid.Row="2">
+            <!-- Console Output -->
+            <TabItem Header="主控台">
+                <Grid Margin="0,12,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBox Grid.Row="0"
+                             Style="{StaticResource ConsoleTextBox}"
+                             Text="{Binding MainOutput, Mode=OneWay}"
+                             helpers:TextBoxHelper.AutoScrollToEnd="True" />
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0"
+                                HorizontalAlignment="Right">
+                        <Button Content="關閉伺服器" Style="{StaticResource DangerButton}"
+                                Command="{Binding ShutdownCommand}" />
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- Tasks -->
+            <TabItem Header="排程任務">
+                <DataGrid ItemsSource="{Binding Tasks}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          SelectionMode="Single"
+                          Margin="0,12,0,0">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="任務名稱" Binding="{Binding TaskName}" Width="*" />
+                        <DataGridTextColumn Header="間隔" Binding="{Binding Interval}" Width="100" />
+                        <DataGridTextColumn Header="上次執行" Binding="{Binding LastExecution}" Width="150" />
+                        <DataGridTextColumn Header="下次執行" Binding="{Binding NextExecution}" Width="150" />
+                        <DataGridTextColumn Header="狀態" Binding="{Binding Status}" Width="100" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <!-- Users -->
+            <TabItem Header="線上使用者">
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                    <TextBlock Text="使用者管理（開發中）" FontSize="14"
+                               Foreground="{DynamicResource FgMutedBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

@@ -130,6 +130,7 @@
     <Compile Include="Generics\Tools.cs" />
     <Compile Include="Network\ActionCodes\AC.cs" />
     <Compile Include="Network\Packet.cs" />
+    <Compile Include="Network\PacketLogger.cs" />
     <Compile Include="Network\SocketClient.cs" />
     <Compile Include="Plugin\InteractableObj.cs" />
     <Compile Include="Plugin\MapHost.cs" />

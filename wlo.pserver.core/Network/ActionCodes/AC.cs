@@ -37,9 +37,22 @@ namespace Network.ActionCodes
                 AC resp = null;
                 if (resp == null)
                 {
-                    foreach (var y in (from c in Assembly.GetEntryAssembly().GetTypes()
-                                       where c.IsClass && !c.IsAbstract && c.IsPublic && c.IsSubclassOf(typeof(AC))
-                                       select c))
+                    // Scan all loaded assemblies, not just the entry assembly.
+                    // AC subclasses live in the main project assembly which may differ
+                    // from the entry assembly (e.g. WPF host vs WinForms host).
+                    var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+                    var acTypes = new List<Type>();
+                    foreach (var asm in assemblies)
+                    {
+                        try
+                        {
+                            foreach (var t in asm.GetTypes())
+                                if (t.IsClass && !t.IsAbstract && t.IsPublic && t.IsSubclassOf(typeof(AC)))
+                                    acTypes.Add(t);
+                        }
+                        catch { } // Skip assemblies that fail reflection (e.g. dynamic)
+                    }
+                    foreach (var y in acTypes)
                     {
                         AC m = null;
                         try

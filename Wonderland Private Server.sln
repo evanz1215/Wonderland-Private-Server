@@ -18,6 +18,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wlo.pserver.core", "wlo.pse
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wlo.pserver.Bot", "wlo.pserver.Bot\wlo.pserver.Bot.csproj", "{F5A7B3D9-0691-4B91-9819-A950B5F5A678}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WloCharacterViewer", "WloCharacterViewer\WloCharacterViewer.csproj", "{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wonderland.Server.Wpf", "Wonderland.Server.Wpf\Wonderland.Server.Wpf.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -94,16 +98,40 @@ Global
 		{F5A7B3D9-0691-4B91-9819-A950B5F5A678}.Release|x64.Build.0 = Release|Any CPU
 		{F5A7B3D9-0691-4B91-9819-A950B5F5A678}.Release|x86.ActiveCfg = Release|Any CPU
 		{F5A7B3D9-0691-4B91-9819-A950B5F5A678}.Release|x86.Build.0 = Release|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Debug|ARM.Build.0 = Debug|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Debug|x64.Build.0 = Debug|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Debug|x86.Build.0 = Debug|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Release|ARM.ActiveCfg = Release|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Release|ARM.Build.0 = Release|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Release|x64.ActiveCfg = Release|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Release|x64.Build.0 = Release|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Release|x86.ActiveCfg = Release|Any CPU
+		{F2BECAB9-AC49-4E5A-90E9-8276DAB09BE7}.Release|x86.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|ARM.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|x64.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|x86.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|ARM.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|ARM.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|x64.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|x64.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|x86.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		BuildVersion_BuildVersioningStyle = None.None.None.Increment
-		BuildVersion_UpdateAssemblyVersion = True
-		BuildVersion_UpdateFileVersion = True
-		BuildVersion_BuildAction = Build
-		BuildVersion_StartDate = 2015/8/2
-		BuildVersion_IncrementBeforeBuild = False
 	EndGlobalSection
 EndGlobal

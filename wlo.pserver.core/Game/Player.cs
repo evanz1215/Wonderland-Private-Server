@@ -451,6 +451,7 @@ using Game.Maps;
                     return;
                 }
                 p.Flags = pFlags;
+                try { Network.PacketLogger.LogSend(CharName + "(" + CharID + ")", p.Buffer.ToArray()); } catch { }
                 m_socket.SendPacket(p);
 
             }
@@ -472,9 +473,9 @@ using Game.Maps;
                     {
                         raw = g.Buffer.ToArray();
                     }
-                    catch
+                    catch (Exception bufEx)
                     {
-                        DebugSystem.Write("Recv invalid buffer from " + SockAddress() + ", ignoring");
+                        DebugSystem.Write("Recv invalid buffer from " + SockAddress() + ", ignoring: " + bufEx.Message);
                         return;
                     }
 
@@ -484,7 +485,9 @@ using Game.Maps;
                         return;
                     }
 
-                    DebugSystem.Write(DebugItemType.Network_Heavy, "Recv Data from {0} len={1} AC={2}", SockAddress(), raw.Length, raw.Length > 4 ? raw[4].ToString() : "?");
+                    // Detailed packet logging
+                    string hexDump = BitConverter.ToString(raw, 0, Math.Min(raw.Length, 60));
+                    DebugSystem.Write(string.Format("[PKT] From {0} len={1} hex={2}", SockAddress(), raw.Length, hexDump));
 
                     RecievePacket p = new RecievePacket(raw, raw.Length);
 
@@ -492,10 +495,18 @@ using Game.Maps;
                     p.SetPtr();
                     var b = p.Unpack8();
                     Network.ActionCodes.AC ac = Network.ActionCodes.AC.GetAction(b);
+                    string pktPlayerInfo = CharName + "(" + CharID + ")";
                     if (ac != null)
                     {
+                        Network.PacketLogger.LogRecv(pktPlayerInfo, raw, true);
                         var c = this;
                         ac.ProcessPkt(c, p);
+                    }
+                    else
+                    {
+                        byte pktSub = (raw.Length > 5) ? raw[5] : (byte)0;
+                        Network.PacketLogger.LogUnhandled(pktPlayerInfo, b, pktSub, raw.Length - 4);
+                        Network.PacketLogger.LogRecv(pktPlayerInfo, raw, false);
                     }
 
 
@@ -512,8 +523,10 @@ using Game.Maps;
                 }
                 catch (Exception f)
                 {
-                    DebugSystem.Write("ProcessSocket Error: " + f.Message);
-                    DebugSystem.Write("StackTrace: " + f.StackTrace);
+                    DebugSystem.Write("[PKT-ERR] ProcessSocket Error: " + f.GetType().Name + ": " + f.Message);
+                    DebugSystem.Write("[PKT-ERR] StackTrace: " + f.StackTrace);
+                    if (f.InnerException != null)
+                        DebugSystem.Write("[PKT-ERR] Inner: " + f.InnerException.Message);
                     m_socket.Disconnect();
                 }
             }
@@ -751,12 +764,17 @@ using Game.Maps;
             {
                 if (QueueData.Count == 1)
                 {
-                    m_socket.SendPacket(QueueData.Dequeue());
+                    var pkt = QueueData.Dequeue();
+                    try { Network.PacketLogger.LogSend(CharName + "(" + CharID + ")", pkt.Buffer.ToArray()); } catch { }
+                    m_socket.SendPacket(pkt);
                     return false;// (object_interactingwith != null);
                 }
                 else if (QueueData.Count > 1)
                 {
-                    m_socket.SendPacket(QueueData.Dequeue()); return true;
+                    var pkt = QueueData.Dequeue();
+                    try { Network.PacketLogger.LogSend(CharName + "(" + CharID + ")", pkt.Buffer.ToArray()); } catch { }
+                    m_socket.SendPacket(pkt);
+                    return true;
                 }
                 return false;
             }

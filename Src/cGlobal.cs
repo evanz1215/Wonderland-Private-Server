@@ -14,7 +14,7 @@ using System.Diagnostics;
 
 namespace System
 {
-    static class cGlobal
+    public static class cGlobal
     {
 
         
@@ -34,6 +34,8 @@ namespace System
 
         public static LoginServer gLoginServer;
         public static WorldServer gWorld;
+        public static ImMallManager gImMallManager = new ImMallManager();
+        public static LotteryManager gLotteryManager = new LotteryManager();
 
         //public static Server.WloWorldNode WLO_World;
         //public static Game.Maps.MapManager gMapManager;

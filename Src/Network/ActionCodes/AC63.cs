@@ -92,8 +92,11 @@ namespace Network.ActionCodes
 
                 // Packet format: [version:u16] [nameLen:u8] [name] [passLen:u8] [pass] [lcLen:u8] [key:u8] [lCode]
                 var rawBuf = r.Buffer.ToArray();
+                DebugSystem.Write("[AC63.4] rawBuf len=" + rawBuf.Length + " ptr=" + r.GetPtr());
                 UInt16 version = r.Unpack16();
+                DebugSystem.Write("[AC63.4] version=" + version + " ptr=" + r.GetPtr());
                 byte nameLen = r.Unpack8();
+                DebugSystem.Write("[AC63.4] nameLen=" + nameLen + " ptr=" + r.GetPtr());
                 int ptr = r.GetPtr();
                 string name = Encoding.ASCII.GetString(rawBuf, ptr, nameLen);
                 r.SetPtr(ptr + nameLen);
@@ -101,7 +104,7 @@ namespace Network.ActionCodes
                 ptr = r.GetPtr();
                 string password = Encoding.ASCII.GetString(rawBuf, ptr, passLen2);
                 r.SetPtr(ptr + passLen2);
-                DebugSystem.Write("Login attempt: user='" + name + "' pass='" + password + "' ver=" + version);
+                DebugSystem.Write("[AC63.4] Login attempt: user='" + name + "' pass='" + password + "' ver=" + version);
                 name = name.ToLower();
 
                 string[] userdata = null;//data of user

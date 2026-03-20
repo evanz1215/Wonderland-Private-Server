@@ -1,0 +1,48 @@
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:17-alpine
+    container_name: wonderland-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: wonderland
+      POSTGRES_USER: wonderland
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-wonderland_prod}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wonderland"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Wonderland Game Server + WebAPI
+  gameserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wonderland-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5000:5000"   # WebAPI + SignalR (management panel)
+      - "6414:6414"   # TCP game client connections
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=wonderland;Username=wonderland;Password=${DB_PASSWORD:-wonderland_prod}
+      - GameServer__TcpPort=6414
+    volumes:
+      - game_data:/app/Data
+      - game_logs:/app/Logs
+
+volumes:
+  postgres_data:
+    driver: local
+  game_data:
+    driver: local
+  game_logs:
+    driver: local

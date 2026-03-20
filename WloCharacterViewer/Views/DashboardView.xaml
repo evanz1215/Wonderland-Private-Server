@@ -1,0 +1,105 @@
+<UserControl x:Class="WloCharacterViewer.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Foreground="#cdd6f4">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="12">
+            <!-- Connection Status -->
+            <Border Background="#313244" CornerRadius="6" Padding="12" Margin="0,0,0,12">
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse Width="12" Height="12" Margin="0,0,8,0">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="#a6e3a1" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsConnected}" Value="False">
+                                        <Setter Property="Fill" Value="#f38ba8" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock Text="{Binding Character.Name}" FontSize="18" FontWeight="Bold" Foreground="#89b4fa" VerticalAlignment="Center" />
+                    <TextBlock Text=" | " Foreground="#585b70" VerticalAlignment="Center" Margin="8,0" />
+                    <TextBlock VerticalAlignment="Center">
+                        <Run Text="Lv." /><Run Text="{Binding Character.Level, Mode=OneWay}" FontWeight="Bold" />
+                        <Run Text=" " /><Run Text="{Binding Character.ElementName, Mode=OneWay}" />
+                        <Run Text=" " /><Run Text="{Binding Character.JobName, Mode=OneWay}" />
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <!-- HP / SP Bars -->
+            <Border Background="#313244" CornerRadius="6" Padding="12" Margin="0,0,0,12">
+                <StackPanel>
+                    <!-- HP -->
+                    <TextBlock Margin="0,0,0,4">
+                        <Run Text="HP: " Foreground="#6c7086" />
+                        <Run Text="{Binding Character.CurHP, StringFormat=N0, Mode=OneWay}" Foreground="#f38ba8" FontWeight="Bold" />
+                        <Run Text=" / " Foreground="#6c7086" />
+                        <Run Text="{Binding Character.FullHP, StringFormat=N0, Mode=OneWay}" Foreground="#f38ba8" />
+                    </TextBlock>
+                    <Border Background="#45475a" CornerRadius="3" Height="16" Margin="0,0,0,12">
+                        <Border Background="#f38ba8" CornerRadius="3" HorizontalAlignment="Left"
+                                Width="{Binding Character.HPPercent, Converter={StaticResource PercentToWidth}, ConverterParameter=400}" />
+                    </Border>
+
+                    <!-- SP -->
+                    <TextBlock Margin="0,0,0,4">
+                        <Run Text="SP: " Foreground="#6c7086" />
+                        <Run Text="{Binding Character.CurSP, StringFormat=N0, Mode=OneWay}" Foreground="#74c7ec" FontWeight="Bold" />
+                        <Run Text=" / " Foreground="#6c7086" />
+                        <Run Text="{Binding Character.FullSP, StringFormat=N0, Mode=OneWay}" Foreground="#74c7ec" />
+                    </TextBlock>
+                    <Border Background="#45475a" CornerRadius="3" Height="16">
+                        <Border Background="#74c7ec" CornerRadius="3" HorizontalAlignment="Left"
+                                Width="{Binding Character.SPPercent, Converter={StaticResource PercentToWidth}, ConverterParameter=400}" />
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- Stats Grid -->
+            <Border Background="#313244" CornerRadius="6" Padding="12" Margin="0,0,0,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Gold" FontSize="11" Foreground="#6c7086" />
+                        <TextBlock Text="{Binding Character.Gold, StringFormat=N0, Mode=OneWay}" FontWeight="Bold" Foreground="#f9e2af" FontSize="15" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="EXP" FontSize="11" Foreground="#6c7086" />
+                        <TextBlock Text="{Binding Character.TotalExp, StringFormat=N0, Mode=OneWay}" FontWeight="Bold" Foreground="#a6e3a1" FontSize="15" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Map" FontSize="11" Foreground="#6c7086" />
+                        <TextBlock Text="{Binding Map.MapId, Mode=OneWay}" FontWeight="Bold" Foreground="#cba6f7" FontSize="15" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="3">
+                        <TextBlock Text="Pos" FontSize="11" Foreground="#6c7086" />
+                        <TextBlock FontWeight="Bold" Foreground="#cba6f7" FontSize="15">
+                            <Run Text="{Binding Map.X, Mode=OneWay}" /><Run Text=", " /><Run Text="{Binding Map.Y, Mode=OneWay}" />
+                        </TextBlock>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Bot Quick Controls -->
+            <Border Background="#313244" CornerRadius="6" Padding="12">
+                <StackPanel>
+                    <TextBlock Text="Bot Controls" FontSize="14" FontWeight="Bold" Foreground="#cba6f7" Margin="0,0,0,8" />
+                    <WrapPanel>
+                        <CheckBox Content="Auto Heal" IsChecked="{Binding Bot.AutoHeal.Enabled}" Foreground="#cdd6f4" Margin="0,0,16,0" />
+                        <CheckBox Content="Auto Battle" IsChecked="{Binding Bot.AutoBattle.Enabled}" Foreground="#cdd6f4" Margin="0,0,16,0" />
+                        <CheckBox Content="Auto Walk" IsChecked="{Binding Bot.AutoWalk.Enabled}" Foreground="#cdd6f4" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -378,6 +378,29 @@ namespace Wonderland_Private_Server
 
             // Initialize game logger
             Server.System.GameLogger.Initialize("logs");
+            Network.PacketLogger.Initialize("logs");
+
+            // Initialize Item Mall
+            cGlobal.gImMallManager.Load();
+            if (cGlobal.gImMallManager.Items.Count == 0)
+            {
+                cGlobal.gImMallManager.AutoPopulate(cGlobal.ItemDatManager);
+                cGlobal.gImMallManager.Save();
+            }
+            // Initialize Lottery
+            cGlobal.gLotteryManager.Load();
+            if (cGlobal.gLotteryManager.GoldPrizes.Count == 0 && cGlobal.gLotteryManager.ImPrizes.Count == 0)
+            {
+                cGlobal.gLotteryManager.AutoPopulate(cGlobal.ItemDatManager);
+                cGlobal.gLotteryManager.Save();
+            }
+
+            // Add Item Mall management tab to UI
+            this.Invoke((MethodInvoker)delegate
+            {
+                var mallPanel = new ImMallPanel(cGlobal.gImMallManager, cGlobal.ItemDatManager);
+                tabControl1.TabPages.Add(mallPanel.CreateTabPage());
+            });
 
             //cGlobal.WLO_World.Initialize();
             Thread.Sleep(2);

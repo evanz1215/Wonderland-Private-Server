@@ -253,11 +253,10 @@ namespace Game
                             gi.Ammt = 1;
                             gi.X = src.CurX;
                             gi.Y = src.CurY;
-                            //gi..StartCountDown();
+                            ItemsDropped[a] = gi;
 
-
-                            //src.SendPacket(Tools.FromFormat("bbwwwdb", 23, 3, gi.ItemID, gi.DropX, gi.DropY, 0, 1));
-                            //Broadcast(Tools.FromFormat("bbwwwdb", 23, 3, gi.ItemID, gi.DropX, gi.DropY, 0, 0), "Ex", src.CharID);
+                            src.Send(Tools.FromFormat("bbwwwdb", 23, 3, gi.ItemID, gi.X, gi.Y, 0, 1));
+                            Broadcast(Tools.FromFormat("bbwwwdb", 23, 3, gi.ItemID, gi.X, gi.Y, 0, 0), "Ex", src.CharID);
                             cnt++;
                         }
                         else if (cnt >= amt)
@@ -670,6 +669,17 @@ namespace Game
         public Player FindPlayerByName(string name)
         {
             return m_playerlist.FirstOrDefault(p => string.Equals(p.CharName, name, StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// Returns a thread-safe snapshot of all players currently on this map.
+        /// </summary>
+        public List<Player> GetPlayerSnapshot()
+        {
+            lock (mlock)
+            {
+                return new List<Player>(m_playerlist);
+            }
         }
         #endregion
 

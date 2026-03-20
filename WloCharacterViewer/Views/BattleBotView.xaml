@@ -1,0 +1,90 @@
+<UserControl x:Class="WloCharacterViewer.Views.BattleBotView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Foreground="#cdd6f4">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="12">
+            <!-- Battle Status -->
+            <Border Background="#313244" CornerRadius="6" Padding="12" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="Battle Status" FontSize="14" FontWeight="Bold" Foreground="#cba6f7" Margin="0,0,0,8" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Phase" FontSize="11" Foreground="#6c7086" />
+                            <TextBlock Text="{Binding Battle.Phase, Mode=OneWay}" FontWeight="Bold" Foreground="#f9e2af" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="Round" FontSize="11" Foreground="#6c7086" />
+                            <TextBlock Text="{Binding Battle.RoundCount, Mode=OneWay}" FontWeight="Bold" Foreground="#a6e3a1" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="In Battle" FontSize="11" Foreground="#6c7086" />
+                            <TextBlock Text="{Binding Battle.InBattle, Mode=OneWay}" FontWeight="Bold" Foreground="#89b4fa" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Auto Battle Settings -->
+            <Border Background="#313244" CornerRadius="6" Padding="12" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="Auto Battle" FontSize="14" FontWeight="Bold" Foreground="#cba6f7" Margin="0,0,0,8" />
+                    <CheckBox Content="Enable Auto Battle" IsChecked="{Binding AutoBattle.Enabled}" Foreground="#cdd6f4" Margin="0,0,0,8" />
+                    <CheckBox Content="Auto Engage (find monsters)" IsChecked="{Binding AutoBattle.AutoEngage}" Foreground="#cdd6f4" Margin="0,0,0,8" />
+
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="80" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Skill ID:" Foreground="#6c7086" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBox Grid.Column="1" Text="{Binding AutoBattle.SkillId, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="#45475a" Foreground="#cdd6f4" BorderBrush="#585b70" Padding="4" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Auto Heal Settings -->
+            <Border Background="#313244" CornerRadius="6" Padding="12" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="Auto Heal" FontSize="14" FontWeight="Bold" Foreground="#cba6f7" Margin="0,0,0,8" />
+                    <CheckBox Content="Enable Auto Heal" IsChecked="{Binding AutoHeal.Enabled}" Foreground="#cdd6f4" Margin="0,0,0,8" />
+
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="60" />
+                            <ColumnDefinition Width="24" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="60" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="HP%:" Foreground="#6c7086" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBox Grid.Column="1" Text="{Binding AutoHeal.HPThreshold, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="#45475a" Foreground="#cdd6f4" BorderBrush="#585b70" Padding="4" />
+                        <TextBlock Grid.Column="3" Text="SP%:" Foreground="#6c7086" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBox Grid.Column="4" Text="{Binding AutoHeal.SPThreshold, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="#45475a" Foreground="#cdd6f4" BorderBrush="#585b70" Padding="4" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Statistics -->
+            <Border Background="#313244" CornerRadius="6" Padding="12">
+                <StackPanel>
+                    <TextBlock Text="Statistics" FontSize="14" FontWeight="Bold" Foreground="#cba6f7" Margin="0,0,0,8" />
+                    <TextBlock>
+                        <Run Text="Total Rounds: " Foreground="#6c7086" /><Run Text="{Binding AutoBattle.TotalRounds, Mode=OneWay}" FontWeight="Bold" />
+                    </TextBlock>
+                    <TextBlock>
+                        <Run Text="Total Battles: " Foreground="#6c7086" /><Run Text="{Binding AutoBattle.TotalBattles, Mode=OneWay}" FontWeight="Bold" />
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

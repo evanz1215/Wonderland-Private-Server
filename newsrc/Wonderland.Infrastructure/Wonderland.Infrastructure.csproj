@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Wonderland.Infrastructure</RootNamespace>
+    <AssemblyName>Wonderland.Infrastructure</AssemblyName>
+    <Description>Database, networking, data file parsing, and external integrations</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Wonderland.Domain\Wonderland.Domain.csproj" />
+    <ProjectReference Include="..\Wonderland.Application\Wonderland.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.*">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.*" />
+    <PackageReference Include="Serilog" Version="4.2.*" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="9.0.*" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.*" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.*" />
+  </ItemGroup>
+
+</Project>
